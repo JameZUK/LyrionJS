@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="assets/icon.svg" width="112" alt="LyrionJS logo">
+</p>
+
 # LyrionJS
 
 A plugin for [Lyrion Music Server](https://lyrion.org) (LMS) that turns any web browser into a
@@ -37,6 +41,8 @@ It adds a new way to play and changes nothing else about LMS.
 3. Open `http://<your-lms>:9000/plugins/LyrionJS/` in any browser. You can also open it from
    *Apps › LyrionJS*, Material Skin's home screen, or *Settings › Plugins › LyrionJS*.
    Tap once so the browser allows sound.
+
+   <sub>Whatever you do, don't open *Apps › LyrionJS* from inside LyrionJS.</sub>
 
 LMS offers updates through the same repository. To install by hand instead, unzip the release zip
 into a `LyrionJS` folder in LMS's plugin folder and restart LMS.
