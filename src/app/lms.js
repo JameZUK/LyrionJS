@@ -24,10 +24,15 @@
       src = String(src);
       if (/^\/\//.test(src)) src = 'http:' + src;   // protocol-relative: another host
       // Images from other hosts go through LMS's image proxy: the page never loads them itself.
-      if (/^https?:\/\//i.test(src)) return this.base + 'imageproxy/' + encodeURIComponent(src) + `/image_${size}x${size}_f`;
+      if (/^https?:\/\//i.test(src)) return this.base + 'imageproxy/' + encodeURIComponent(src) + `/image_${size}x${size}_f.png`;
       if (/^[a-z][a-z0-9+.-]*:/i.test(src)) return null;   // data:, javascript: and the like
       src = src.replace(/^[\\/\s]+/, '');   // a path on this server, however it starts
       if (/^music\/[^/]+\/cover$/.test(src)) src += `_${size}x${size}_f`;
+      // LMS's image proxy sends a picture itself only when asked for a size: at full size (as LMS
+      // hands them out, ".../image.png") it redirects to the picture's own host, which this page
+      // doesn't load from. So radio logos and the like are always asked for at a size.
+      const px = src.match(/^(imageproxy\/[^/]+\/image)(\.(?:png|jpe?g|gif))?$/i);
+      if (px) src = px[1] + `_${size}x${size}_f` + (/^\.jpe?g$/i.test(px[2] || '') ? '.jpg' : '.png');
       try { if (new URL(this.base + src, location.href).origin !== location.origin) return null; } catch (e) { return null; }
       return this.base + src;
     }
