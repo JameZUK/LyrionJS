@@ -2,8 +2,13 @@
 
 	[% WRAPPER setting title="PLUGIN_LYRIONJS_OPEN" desc="" %]
 		[% "PLUGIN_LYRIONJS_OPEN_DESC" | string %]<br/><br/>
-		<a href="/plugins/LyrionJS/" target="_blank" rel="noopener"><input type="button" value="[% "PLUGIN_LYRIONJS_OPEN_BUTTON" | string %]"></a>
+		<a href="[% lyrionjsUrl | html %]" target="_blank" rel="noopener"><input type="button" value="[% "PLUGIN_LYRIONJS_OPEN_BUTTON" | string %]"></a>
 		&nbsp; <code>[% lyrionjsUrl | html %]</code>
+	[% END %]
+
+	[% WRAPPER setting title="PLUGIN_LYRIONJS_URL" desc="" %]
+		[% "PLUGIN_LYRIONJS_URL_DESC" | string %]<br/><br/>
+		<input type="text" class="stdedit" name="pref_pageUrl" id="pref_pageUrl" size="50" value="[% prefs.pref_pageUrl | html %]" placeholder="http://music.example.lan:9000">
 	[% END %]
 
 	[% WRAPPER setting title="PLUGIN_LYRIONJS_ENABLED" desc="" %]
@@ -19,9 +24,9 @@
 	[% WRAPPER setting title="PLUGIN_LYRIONJS_OUTPUT" desc="" %]
 		[% "PLUGIN_LYRIONJS_OUTPUT_DESC" | string %]<br/><br/>
 		<select name="pref_defaultOutput" class="stdedit">
-			[% FOREACH opt = ['auto', 'webaudio', 'media'] %]
-			<option value="[% opt %]" [% IF prefs.pref_defaultOutput == opt %]selected[% END %]>[% "PLUGIN_LYRIONJS_OUTPUT_$opt" | string %]</option>
-			[% END %]
+			<option value="auto" [% IF prefs.pref_defaultOutput == 'auto' %]selected[% END %]>[% "PLUGIN_LYRIONJS_OUTPUT_AUTO" | string %]</option>
+			<option value="webaudio" [% IF prefs.pref_defaultOutput == 'webaudio' %]selected[% END %]>[% "PLUGIN_LYRIONJS_OUTPUT_WEBAUDIO" | string %]</option>
+			<option value="media" [% IF prefs.pref_defaultOutput == 'media' %]selected[% END %]>[% "PLUGIN_LYRIONJS_OUTPUT_MEDIA" | string %]</option>
 		</select>
 	[% END %]
 

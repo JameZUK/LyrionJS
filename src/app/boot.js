@@ -34,9 +34,28 @@
       h('button', { class: 'btn', onclick: () => location.reload() }, icon('refresh'), 'Try again')));
   }
 
+  /**
+   * Inside another page's frame (Material Skin opens its Extras that way), the player stops when
+   * that window closes: offer it a tab of its own, or carry on here.
+   */
+  function leaveFrame() {
+    let inFrame = true;
+    try { inFrame = window.top !== window; } catch (e) { /* a parent on another origin */ }
+    if (!inFrame) return Promise.resolve();
+    return new Promise((resolve) => {
+      document.getElementById('view').replaceChildren(h('div', { class: 'discover' },
+        h('div', { class: 'logo' }, icon('note', 'huge')), h('h1', { text: 'LyrionJS' }),
+        h('p', { text: 'LyrionJS plays best in a tab of its own: in this window it stops when the window closes.' }),
+        h('div', { class: 'row-btns' },
+          h('a', { class: 'btn', href: location.origin + location.pathname, target: '_blank', rel: 'noopener' }, icon('play'), 'Open in a new tab'),
+          h('button', { class: 'btn ghost', onclick: () => resolve() }, 'Use it here'))));
+    });
+  }
+
   async function boot() {
     applyTheme();
     renderNav();
+    await leaveFrame();
     document.getElementById('menuBtn').onclick = () => document.body.classList.toggle('nav-open');
     document.getElementById('scrim').onclick = () => document.body.classList.remove('nav-open');
     document.getElementById('playerBtn').onclick = () => S.lms && playerPicker();

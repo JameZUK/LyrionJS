@@ -11,7 +11,7 @@ PLUGIN_LYRIONJS_MENU
 	EN	LyrionJS web player
 
 PLUGIN_LYRIONJS_MENU_INFO
-	EN	Open this address in a web browser to play there:
+	EN	Open the player in a new tab here, or this address in a browser on any device on your network:
 
 PLUGIN_LYRIONJS_OPEN
 	EN	Web player
@@ -21,6 +21,12 @@ PLUGIN_LYRIONJS_OPEN_DESC
 
 PLUGIN_LYRIONJS_OPEN_BUTTON
 	EN	Open LyrionJS
+
+PLUGIN_LYRIONJS_URL
+	EN	Player address
+
+PLUGIN_LYRIONJS_URL_DESC
+	EN	The address LMS's menus and links open the player at. Leave empty to use this server's name from DNS (or its IP address if it has none). Set it if browsers reach LMS under another name, such as a reverse proxy: the player is one LMS player per browser and address, so keep to one.
 
 PLUGIN_LYRIONJS_ENABLED
 	EN	Browser players

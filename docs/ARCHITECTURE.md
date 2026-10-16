@@ -44,11 +44,20 @@ Perl, inside LMS's event loop, using only LMS's own APIs:
   - `POST /plugins/LyrionJS/log`: opt-in page diagnostics, written to the LMS log.
 - `GET /plugins/LyrionJS/config.json`: the plugin's settings the page needs (players on/off,
   default output, diagnostics).
-- Ways in from LMS: a link in the classic UI's plugin menu and Material Skin's *Extras*
-  (`addPageLinks`, with an icon), a home-menu entry carrying a `weblink` (Material opens it;
-  other controllers show the address via `lyrionjs info`), and the settings page.
+- Ways in from LMS, all with the absolute player address (below):
+  - a *LyrionJS web player* entry in **My Music** (`registerPluginMenu`, node `myMusic`). Its
+    `go` action lists `lyrionjs info`: the address as a link (`parseURLs`, so Material Skin
+    opens it in a new tab) and, for other controllers, as text. Material builds My Music
+    entries from their actions alone, so the entry's own `weblink` only helps other clients;
+  - a link in the classic UI's plugin menu and Material Skin's *Extras* (`addPageLinks`, with
+    an icon). Material opens Extras in a frame; the page then offers a tab of its own;
+  - the button on the settings page.
+- The player address: the `pageUrl` setting, or else this server's URL with its IP address
+  replaced by its DNS name when reverse DNS gives one that resolves back to it, or else the
+  IP address. Links all use one address so that a browser stays one player (the page's
+  identity is per origin).
 - A settings page (`Settings.pm`, `HTML/EN/plugins/LyrionJS/settings/basic.html`), prefs in
-  `plugin.lyrionjs`: `enabled`, `proxyStreams`, `defaultOutput`, `clientDiagnostics`.
+  `plugin.lyrionjs`: `enabled`, `proxyStreams`, `defaultOutput`, `clientDiagnostics`, `pageUrl`.
 - A subscription to `client new` / `client reconnect`: for players whose MAC starts with
   `02:4c:4a` only, set `mp3StreamingMethod = 1` (proxied) if it isn't already.
 
