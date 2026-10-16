@@ -48,7 +48,7 @@
           sel('transitionType', [[0, 'None (gapless)'], [1, 'Crossfade'], [2, 'Fade in'], [3, 'Fade out'], [4, 'Fade in and out']], 'Transition between tracks'),
           sel('transitionDuration', [[0, '0 s'], [1, '1 s'], [2, '2 s'], [3, '3 s'], [5, '5 s'], [8, '8 s'], [10, '10 s']], 'Transition length'),
           prefs['plugin.dontstopthemusic:provider'] !== undefined ? await dstmSetting(prefs['plugin.dontstopthemusic:provider']) : null,
-          isLocal(S.target) ? h('p', { class: 't2', text: 'This browser player plays gaplessly; crossfades apply to hardware and squeezelite players.' }) : null));
+          isLocal(S.target) ? h('p', { class: 't2', text: 'Crossfades need both tracks at the same sample rate; otherwise this browser plays them gaplessly.' }) : null));
       }
 
       // Server.

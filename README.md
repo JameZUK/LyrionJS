@@ -17,7 +17,7 @@ It adds a new way to play and changes nothing else about LMS.
 
 ## Features
 
-- **A real LMS player in the browser.** It's gapless, syncs with your other players, and handles
+- **A real LMS player in the browser.** It's gapless or crossfades, syncs with your other players, and handles
   volume, power and renaming.
 - **Lossless.** FLAC up to 24-bit/192 kHz, WAV/AIFF and MP3 are decoded in the page. LMS converts
   everything else (AAC, Ogg, radio, streaming services) as usual.
@@ -60,7 +60,8 @@ Each browser also has its own settings page inside LyrionJS.
 
 - On iPhone and iPad the device's volume buttons set the volume. LMS's volume for that player
   stays at 100 %.
-- Crossfades set in LMS aren't applied. The browser player is always gapless.
+- Crossfades need both tracks at the same sample rate. Otherwise the tracks play gaplessly, as on
+  squeezelite.
 - It has no login of its own beyond LMS's optional password. Like LMS, it's meant for your home
   network.
 

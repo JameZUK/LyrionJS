@@ -92,7 +92,7 @@
     const ch = (s, d) => (s || d).charCodeAt(0);
     p[0] = ch(o.command, 's'); p[1] = ch(o.autostart, '1'); p[2] = ch(o.format, 'f');
     p[3] = ch(o.pcmSize, '?'); p[4] = ch(o.pcmRate, '?'); p[5] = ch(o.pcmChannels, '?'); p[6] = ch(o.pcmEndian, '?');
-    p[7] = o.threshold || 0; p[10] = ch(o.transType, '0'); p[11] = o.flags || 0;
+    p[7] = o.threshold || 0; p[9] = o.transPeriod || 0; p[10] = ch(o.transType, '0'); p[11] = o.flags || 0;
     put32(p, 14, o.replayGain || 0); put16(p, 18, o.serverPort || 9000); put32(p, 20, o.serverIp || 0);
     p.set(req, 24);
     return serverFrame('strm', p);

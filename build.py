@@ -21,7 +21,7 @@ SRC = os.path.join(HERE, "src")
 
 WORKLET = ["output/worklet.js"]
 LIB = [
-    "core/bytes.js", "core/slimproto.js", "core/decoder.js", "core/flac.js", "core/pcm.js", "core/mp3.js", "core/player.js",
+    "core/bytes.js", "core/slimproto.js", "core/decoder.js", "core/flac.js", "core/pcm.js", "core/mp3.js", "core/transition.js", "core/player.js",
     "output/fmp4.js", "output/media.js", "output/webaudio.js",
     "host/transport.js",
 ]

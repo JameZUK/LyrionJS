@@ -2,7 +2,7 @@
 const path = require('path');
 const src = path.join(__dirname, '..', 'src');
 const MODULES = {
-  core: ['core/bytes.js', 'core/slimproto.js', 'core/decoder.js', 'core/flac.js', 'core/pcm.js', 'core/mp3.js', 'core/player.js'],
+  core: ['core/bytes.js', 'core/slimproto.js', 'core/decoder.js', 'core/flac.js', 'core/pcm.js', 'core/mp3.js', 'core/transition.js', 'core/player.js'],
   output: ['output/worklet.js', 'output/fmp4.js', 'output/webaudio.js'],
   host: ['host/transport.js'],
 };

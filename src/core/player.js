@@ -83,6 +83,7 @@
       this.lastStat = 0; this.backoff = 1000; this.serverVersion = ''; this.gain = 1; this.enabled = true;
       this.listeners = new Set(); this.stopped = true; this.pumping = false; this.pumpQueued = false; this.lastError = '';
       this.rx = new ByteQueue(8192); this.rxIn = 0; this.rxPos = 0; this.replayEnd = 0;
+      this.tx = new LJ.Transitions(this.output);   // crossfades and fades, between decoders and output
       this.output.onReport = () => this.tick();
     }
 
@@ -252,7 +253,7 @@
           else {
             for (const t of this.tracks) if (t.seq > keep) t.kill();
             this.tracks = this.tracks.filter((t) => t.seq <= keep);
-            this.output.trimAfter(keep);
+            this.output.trimAfter(keep); this.tx.trim(keep);
           }
           this._stat('STMf'); break;
         }
@@ -267,15 +268,16 @@
       // A new stream while one is still arriving replaces it. What it already decoded still
       // plays; it is never reported (LMS has moved on). A finished stream still decoding is the
       // previous track playing out (gapless), and carries on.
-      for (const t of this.tracks) if (t.streamOpen) { t.kill(); this.output.endSeq(t.seq); }
+      for (const t of this.tracks) if (t.streamOpen) { t.kill(); this.tx.stop(t.seq); }
       const make = this.decoders[s.format];
       const track = new Track(seq, s, make ? make(s) : null);
       this.tracks.push(track);
+      this.tx.begin(seq, s.transType, s.transPeriod);
       this.stmuSent = false; this.stmuOwed = false; this.stmoSent = false; this.lastError = '';
       if (!track.decoder) {
         track.decoded = track.reported = true;
         this.lastError = 'Unsupported format ' + s.format;
-        this._stat('STMn'); return;
+        this.tx.stop(seq); this._stat('STMn'); return;
       }
       const dec = track.decoder;
       dec.onError = (msg) => { if (!track.dead) this._failTrack(track, msg); };
@@ -283,7 +285,7 @@
         if (track.dead) return;   // late output from an asynchronous decoder
         if (track.gain !== 1) for (const c of chans) for (let i = 0; i < c.length; i++) c[i] *= track.gain;
         track.frames += chans[0].length;
-        this.output.push(seq, rate, chans, dec.outBits || 16);
+        this.tx.push(seq, rate, chans, dec.outBits || 16);
       };
       dec.onFinished = () => this.pump();
       // Server address 0 means LMS itself (always the case for proxied streams).
@@ -330,7 +332,7 @@
       this.lastError = why;
       const wasOpen = track.streamOpen;
       track.kill();
-      this.output.endSeq(track.seq);
+      this.tx.stop(track.seq);
       if (wasOpen) this._send(clientFrame('DSCO', new Uint8Array([DSCO.REMOTE_RESET])));
       this._stat('STMn');
       this._nothingToPlay(track);
@@ -341,7 +343,7 @@
      * does once its output runs dry (with STMu, unless the track already failed with STMn).
      */
     _nothingToPlay(track, event) {
-      if (track !== this.tracks[this.tracks.length - 1] || track.frames || this.output.queuedSeconds() > 0) return;
+      if (track !== this.tracks[this.tracks.length - 1] || track.frames || this.output.queuedSeconds() + this.tx.heldSeconds() > 0) return;
       if (this.state !== 'waiting' && this.state !== 'loaded') return;
       this.state = 'stopped'; this.stmuSent = true; this.audibleSeq = null;
       if (event) this.stmuOwed = !this._stat(event);
@@ -360,7 +362,7 @@
 
     _flush() {
       for (const t of this.tracks) t.kill();
-      this.tracks = []; this.output.flush(); this.state = 'stopped'; this.audibleSeq = null;
+      this.tracks = []; this.output.flush(); this.tx.clear(); this.state = 'stopped'; this.audibleSeq = null;
       this.stmuSent = true; this.stmsOwed = null; this.stmuOwed = false; this.stmoSent = false;
     }
 
@@ -384,11 +386,12 @@
           if (!t.describe && t.decoder.describe) t.describe = t.decoder.describe() || '';
           if (r === 'done') {
             if (t.dead) continue;   // failed while pumping (onError)
-            t.decoded = true; this.output.endSeq(t.seq); this._ack(t); this._readyForNext(); this._nothingToPlay(t, 'STMu');
+            t.decoded = true; this.tx.end(t.seq); this._ack(t); this._readyForNext(); this._nothingToPlay(t, 'STMu');
             continue;
           }
           if (r === 'need') break;
         }
+        this.tx.check();   // a held track end goes once the output runs low without it
         this._autostart();
       } finally { this.pumping = false; }
       if (again && !this.pumpQueued) { this.pumpQueued = true; G.setTimeout(() => { this.pumpQueued = false; this.pump(); }, 0); }
