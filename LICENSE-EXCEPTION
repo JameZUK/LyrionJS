@@ -1,0 +1,45 @@
+LyrionJS: additional permission for app store distribution
+
+LyrionJS is licensed under the GNU General Public License, version 2
+or (at your option) any later version (see LICENSE). In addition, the
+copyright holders of LyrionJS grant the following permission.
+
+1. Permission
+
+   You may convey the object code of LyrionJS, or of a work based on
+   it, through an application store or similar distribution service (for
+   example Apple's App Store or TestFlight), even though the service's terms
+   of use, usage rules or technical measures (such as code signing, limits
+   on the number of devices, or copy protection) place restrictions on
+   recipients that the GNU General Public License would otherwise not allow.
+
+2. Conditions
+
+   a. You make the complete corresponding source code of the work you convey
+      available, free of charge, under the GNU General Public License
+      (version 2 or later) together with this permission, for example by
+      a link in the app's listing or in the app itself to a public
+      repository.
+
+   b. The only further restrictions on recipients are those imposed by the
+      distribution service itself. You add none of your own.
+
+   c. You do not use this permission to restrict anyone's rights in the
+      source code. Anyone who obtains the source may use, modify and
+      redistribute it under the GNU General Public License.
+
+3. Scope
+
+   This permission covers only code whose copyright holders have granted it:
+   the code of this project. It does not cover third-party components, which
+   keep their own licences. Components under the GNU General Public License
+   or similar terms may be included in a work conveyed under this permission
+   only if their own copyright holders grant an equivalent permission.
+
+4. Modified versions
+
+   If you modify LyrionJS, you may extend this permission to your
+   modifications, or remove it from your version. If you remove it, your
+   version is under the GNU General Public License alone. Contributions to
+   this project are accepted under the GNU General Public License together
+   with this permission.

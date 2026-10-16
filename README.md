@@ -30,7 +30,7 @@ It adds a new way to play and changes nothing else about LMS.
 1. In LMS, go to *Settings › Plugins*. At the bottom, under *Additional Repositories*, add:
 
    ```
-   https://raw.githubusercontent.com/JameZUK/LyrionJS/main/repo.xml
+   https://raw.githubusercontent.com/JameZUK/LyrianJS/main/repo.xml
    ```
 
 2. Click *Apply*. Then tick **LyrionJS** in the list, click *Apply* again, and restart LMS when asked.
@@ -63,6 +63,14 @@ Each browser also has its own settings page inside LyrionJS.
 - Crossfades set in LMS aren't applied. The browser player is always gapless.
 - It has no login of its own beyond LMS's optional password. Like LMS, it's meant for your home
   network.
+
+## Licence
+
+GPL-2.0-or-later (see [`LICENSE`](LICENSE)). The project's own code also carries an additional
+permission for distribution through app stores, as long as the full source stays available
+under the GPL: see [`LICENSE-EXCEPTION`](LICENSE-EXCEPTION).
+
+LyrionJS is an independent project, not an official Lyrion one.
 
 ## More
 
