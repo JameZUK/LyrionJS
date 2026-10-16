@@ -60,10 +60,13 @@ Perl, inside LMS's event loop, using only LMS's own APIs:
   - a link in the classic UI's plugin menu and Material Skin's *Extras* (`addPageLinks`, with
     the icon). Material opens Extras in a frame; the page then offers a tab of its own;
   - the button on the settings page.
-- The player address: the `pageUrl` setting, or else this server's URL with its IP address
+- The player address: the `pageUrl` setting (a host alone, or host and `/`, gets the player's
+  path; anything longer is the full address), or else this server's URL with its IP address
   replaced by its DNS name when reverse DNS gives one that resolves back to it, or else the
-  IP address. Links all use one address so that a browser stays one player (the page's
-  identity is per origin).
+  IP address. The name is looked up once, with AnyEvent's resolver as LMS's own lookups are,
+  so LMS never waits on DNS; links use the IP address until the answer comes, and are all
+  re-registered when it does. Links all use one address so that a browser stays one player
+  (the page's identity is per origin).
 - A settings page (`Settings.pm`, `HTML/EN/plugins/LyrionJS/settings/basic.html`), prefs in
   `plugin.lyrionjs`: `enabled`, `proxyStreams`, `defaultOutput`, `clientDiagnostics`, `pageUrl`.
 - A subscription to `client new` / `client reconnect`: for players whose MAC starts with
@@ -84,25 +87,31 @@ authentication of its own.
      bytes the client has received in that session.
 3. The plugin answers with text JSON:
    `{"session":S,"secret":K,"resumed":false,"hold":10}` for a new session, or
-   `{"session":S,"secret":K,"resumed":true,"hold":10,"replay":R}` for a resume, where the
-   first `R` bytes that follow are the replay of what the client missed.
+   `{"session":S,"secret":K,"resumed":true,"hold":10,"replay":R,"got":G}` for a resume, where
+   the first `R` bytes that follow are the replay of what the client missed, and `G` is the
+   number of bytes of the client's binary messages that arrived in that session (so it can
+   send again what was lost in a socket that died without a word).
    A refused resume (unknown session, wrong secret, or bytes no longer held) is answered
    with close code **4404**; the client then starts a new session.
 4. After that every message is **binary, raw Slimproto bytes**, in both directions. The
    plugin reads only the frame headers (4-byte opcode, 4-byte length) of what the client
    sends, and passes whole frames to LMS. A session's first frame must be a HELO whose MAC
-   starts with `02:4c:4a`, and any later HELO must carry the same MAC; bytes that aren't
-   Slimproto, or a frame over 64 KiB, close the socket with **1008**.
+   starts with `02:4c:4a`, and come within 10 s of the socket opening; any later HELO must
+   carry the same MAC; bytes that aren't Slimproto, or a frame over 64 KiB, close the socket
+   with **1008**. A close for breaking the rules (1002, 1008, 1009) ends the session: it is
+   not held for a resume.
 5. The plugin keeps the last 256 KiB sent to the client, counted from the start of the
    session, so a resume can replay from any `N` still held.
 6. When the WebSocket drops, the plugin keeps the LMS connection open for **10 s**. A resume
    within that time attaches to it; otherwise the LMS connection is closed and LMS sees the
    player disconnect.
 7. LMS closing its side ends the session (close code **1001**).
-   An attached socket the plugin hears nothing on for 30 s (LMS polls every player every
-   5 s, and the page answers) is dropped as if it had disconnected, and so is one more than
-   256 writes behind; both then get the hold. A close frame is sent after whatever is
-   already queued to that socket.
+   An attached socket the plugin hears no message on for 30 s (LMS polls every player every
+   5 s, and the page answers; pings don't count) is dropped as if it had disconnected, and
+   so is one more than 64 writes behind (pings included); both then get the hold. A close
+   frame is sent after whatever is already queued to that socket.
+   Switching browser players off in Settings ends the sessions there are (**4403**) and
+   refuses resumes as well as new sessions.
 8. A new session whose HELO has the same MAC as an existing session ends that one first, so
    LMS never sees two connections for one player.
 
@@ -113,6 +122,7 @@ Close codes the plugin sends:
 | Code | Meaning | Client |
 |---|---|---|
 | 1000, 1001 | closed; LMS ended the player's connection, or the server is stopping | new session later |
+| 1006 (no close frame) | the socket dropped | resume |
 | 1002, 1009 | WebSocket protocol error; message too big | new session |
 | 1008 | policy: no or bad hello, not a LyrionJS HELO, not Slimproto | new session |
 | 1011 | LMS's Slimproto port can't be reached | retry later |
@@ -123,8 +133,11 @@ Close codes the plugin sends:
 
 ### What the client must do (the page)
 
-- **Dead socket:** LMS talks to every player at least every 5 s, so 20 s with nothing
-  received means the socket is dead. Abandon it and resume.
+- **Dead socket:** LMS talks to every player at least every 5 s and drops one that is silent
+  for 15 s, so 11 s with nothing received (two missed polls) means the socket is dead.
+  Abandon it and resume, in time for the resume to work.
+- **Lost frames:** keep the frames sent in the session (not heartbeats). On a resume, send
+  again those after the plugin's `got`, before what was held during the gap.
 - **During a gap:** don't queue `STMt` heartbeats; send one fresh one on resume. Queue other
   STATs (`STMs`, `STMd`, `STMu`, …) and send them in order on resume. Drop sync corrections
   (`strm a`, timed `strm p` and `strm u`) that describe a moment already past. (These are

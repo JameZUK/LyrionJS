@@ -14,6 +14,7 @@
 
   // -- the sheet --------------------------------------------------------------
   let sheetClosed = null;   // what the open sheet does when dismissed without a choice
+  let sheetFocus = null;    // what had the focus before it opened
 
   function sheet(title, items, opts = {}) {
     closeSheet();
@@ -27,7 +28,7 @@
         onclick: async () => { if (!it.keepOpen) closeSheet(true); try { await it.run(); } catch (e) { fail(e); } } },
       icon(it.icon || 'play'), h('span', { text: it.label }), it.checked ? icon('check', 'tick') : null));
     }
-    const panel = h('div', { class: 'sheet-panel', role: 'dialog', 'aria-label': title },
+    const panel = h('div', { class: 'sheet-panel', role: 'dialog', 'aria-modal': 'true', 'aria-label': title },
       h('div', { class: 'sheet-head' }, opts.art ? artEl(opts.art, opts.artIcon || 'note', 'sm') : null,
         h('div', { class: 'sheet-title' }, h('div', { class: 't1', text: title }), opts.sub ? h('div', { class: 't2', text: opts.sub }) : null),
         btn('close', 'Close', () => closeSheet())),
@@ -35,13 +36,20 @@
     wrap.append(h('div', { class: 'sheet-scrim', onclick: () => closeSheet() }), panel);
     wrap.hidden = false;
     sheetClosed = opts.onDismiss || null;
-    requestAnimationFrame(() => wrap.classList.add('open'));
+    // Keyboard and screen readers go into the dialog, and back where they were when it closes.
+    sheetFocus = document.activeElement;
+    requestAnimationFrame(() => {
+      wrap.classList.add('open');
+      if (!panel.contains(document.activeElement)) { const first = panel.querySelector('.sheet-item, input, select, button'); if (first) first.focus(); }
+    });
   }
   /** chosen: closed by picking something (not dismissed). */
   function closeSheet(chosen) {
     const w = document.getElementById('sheet');
     w.classList.remove('open'); w.hidden = true; w.textContent = '';
     const f = sheetClosed; sheetClosed = null;
+    const back = sheetFocus; sheetFocus = null;
+    if (back && back.isConnected && back.focus) back.focus();
     if (f && !chosen) f();
   }
 
@@ -100,6 +108,11 @@
     wrap.dispose = () => { gen++; io.disconnect(); };
     more();
     return wrap;
+  }
+
+  /** Stops the lazy lists in el (el itself may be one). */
+  function disposeLists(el) {
+    for (const l of [el, ...el.querySelectorAll('.lazy')]) if (l.dispose) l.dispose();
   }
 
   /** Replace what a holder shows; lists it showed stop loading. */

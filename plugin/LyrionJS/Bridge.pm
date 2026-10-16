@@ -29,7 +29,8 @@ use constant SWEEP         => 5;           # seconds between checks for the two 
 use constant LINGER        => 2;           # seconds a closing socket has to send what's queued
 use constant REPLAY_BYTES  => 256 * 1024;  # Slimproto bytes kept for a resume
 use constant MAX_MESSAGE   => 64 * 1024;   # largest message (and Slimproto frame) from the page
-use constant MAX_QUEUED    => 256;         # writes queued to a page that isn't reading
+use constant MAX_QUEUED    => 64;          # writes queued to a page that isn't reading (LMS's
+                                           # messages to a player are small, so this is little)
 use constant MAX_SESSIONS  => 32;
 use constant MAX_SOCKETS   => 64;
 use constant LOG_PER_MIN   => 120;         # diagnostics posts accepted a minute (all pages)
@@ -50,12 +51,19 @@ my %conns;     # refaddr(page socket) => { sock, rbuf, frag, fragOp, session, op
 my %sessions;  # id => { id, secret, mac, up, conn, sent, buf, bufStart, out }
 my %byUp;      # refaddr(LMS socket) => session id
 my @logTimes;  # when recent diagnostics posts arrived
+my $warnedRandom = 0;
 
 sub init {
 	my ($class, $logger, $pluginPrefs) = @_;
 	$log = $logger;
 	$prefs = $pluginPrefs;
 	$active = 1;
+	# Browser players switched off: the ones playing stop too (their pages carry on as controllers).
+	$prefs->setChange(sub {
+		my $on = $_[1];
+		return if $on;
+		_endSession($_, CLOSE_DISABLED) for values %sessions;
+	}, 'enabled') if $prefs;
 	Slim::Web::Pages->addRawFunction(qr{^/plugins/LyrionJS/ws$}, \&_upgrade);
 	Slim::Web::Pages->addRawFunction(qr{^/plugins/LyrionJS/log$}, \&_clientLog);
 	_sweepLater();
@@ -183,6 +191,13 @@ sub _keep {
 	}
 }
 
+# Text from a page made safe for one log line: no control characters or line separators.
+sub logSafe {
+	my $t = shift // '';
+	$t =~ s/[\x00-\x1f\x7f\x{2028}\x{2029}]+/ /g;
+	return $t;
+}
+
 # Compares secrets in time that doesn't depend on where they differ.
 sub sameSecret {
 	my ($x, $y) = @_;
@@ -258,7 +273,6 @@ sub _wsRead {
 		return _closeConn($c, CLOSE_DROPPED);
 	}
 	return _closeConn($c, CLOSE_DROPPED) if $n == 0;
-	$c->{lastRx} = _now();
 	$c->{rbuf} .= $data;
 	_wsFrames($c);
 }
@@ -268,30 +282,46 @@ sub _wsFrames {
 	while ($conns{refaddr $c->{sock}}) {
 		my ($op, $fin, $data) = parseFrame(\$c->{rbuf});
 		last unless defined $op;
-		return _closeConn($c, $fin) if $op eq 'error';
+		return _refuse($c, $fin, 'protocol') if $op eq 'error';
 		if ($op == 0x8) { return _closeConn($c, CLOSE_NORMAL) }
-		if ($op == 0x9) { _send($c, 0xA, $data); next }
+		if ($op == 0x9) {
+			# A page that pings but doesn't read: no queue without limit (pings aren't activity).
+			return _closeConn($c, CLOSE_DROPPED) if _behind($c);
+			_send($c, 0xA, $data); next;
+		}
 		next if $op == 0xA;
 		if ($op == 0x0) {
-			return _closeConn($c, CLOSE_PROTOCOL) unless $c->{fragOp};
+			return _refuse($c, CLOSE_PROTOCOL, 'protocol') unless $c->{fragOp};
 			$c->{frag} .= $data;
-			return _closeConn($c, CLOSE_TOO_BIG) if length $c->{frag} > MAX_MESSAGE;
+			return _refuse($c, CLOSE_TOO_BIG, 'too big') if length $c->{frag} > MAX_MESSAGE;
 			next unless $fin;
 			($op, $data) = ($c->{fragOp}, $c->{frag});
 			$c->{frag} = ''; $c->{fragOp} = 0;
 		}
 		elsif ($op != 0x1 && $op != 0x2) {
-			return _closeConn($c, CLOSE_PROTOCOL);
+			return _refuse($c, CLOSE_PROTOCOL, 'protocol');
 		}
 		elsif ($c->{fragOp}) {
-			return _closeConn($c, CLOSE_PROTOCOL);          # a new message inside a fragmented one
+			return _refuse($c, CLOSE_PROTOCOL, 'protocol');   # a new message inside a fragmented one
 		}
 		elsif (!$fin) {
 			$c->{fragOp} = $op; $c->{frag} = $data;
 			next;
 		}
+		$c->{lastRx} = _now();   # a message: the page is alive
 		_message($c, $op, $data);
 	}
+}
+
+# Writes queued to a page that isn't reading them.
+sub _behind { Slim::Networking::Select::writeNoBlockQLen($_[0]{sock}) > MAX_QUEUED }
+
+# A page that broke the rules: close its socket, and end its session rather than hold it (a
+# resume would only carry on what was refused).
+sub _refuse {
+	my ($c, $code, $reason) = @_;
+	if (my $s = $c->{session}) { return _endSession($s, $code) if $s->{conn} && $s->{conn} == $c }
+	_closeConn($c, $code, $reason);
 }
 
 sub _send {
@@ -329,24 +359,27 @@ sub _dropSocket {
 	my $sock = shift;
 	Slim::Utils::Timers::killTimers($sock, \&_linger);
 	Slim::Networking::Select::removeWriteNoBlockQ($sock);
-	Slim::Web::HTTP::closeHTTPSocket($sock) if $sock->opened;
+	Slim::Web::HTTP::closeHTTPSocket($sock);   # also clears LMS's records of it
 }
 
 # Sockets that never said hello, and attached ones that went silent (a browser that vanished
 # without closing), are dropped. LMS talks to every player at least every 5 s and the page
 # answers, so an attached socket is never quiet for long.
 sub _sweep {
+	_sweepLater();   # first: an error below must not stop the sweeps
 	my $now = _now();
 	for my $c (values %conns) {
 		if (!$c->{session}) {
 			_closeConn($c, CLOSE_POLICY, 'no hello') if $now - $c->{opened} > HELLO_WAIT;
+		}
+		elsif (!$c->{session}{mac} && $now - $c->{opened} > HELLO_WAIT) {
+			_refuse($c, CLOSE_POLICY, 'no HELO');   # a session that never says which player it is
 		}
 		elsif ($now - $c->{lastRx} > IDLE) {
 			main::INFOLOG && $log->is_info && $log->info("LyrionJS session $c->{session}{id}: socket silent, dropped");
 			_closeConn($c, CLOSE_DROPPED);
 		}
 	}
-	_sweepLater();
 }
 
 sub _sweepLater {
@@ -375,13 +408,14 @@ sub _message {
 
 	# Pass whole Slimproto frames only, and check every HELO: it must carry LyrionJS's MAC
 	# prefix and, once a session has one, the same MAC.
+	$s->{got} += length $data;   # what the page sent, counted for its resume
 	$s->{out} .= $data;
 	my $frames = clientFrames(\$s->{out});
-	return _closeConn($c, CLOSE_POLICY, 'not slimproto') unless $frames;
+	return _refuse($c, CLOSE_POLICY, 'not slimproto') unless $frames;
 	for my $f (@$frames) {
 		if (substr($f, 0, 4) eq 'HELO') {
 			my $mac = heloMac($f);
-			return _closeConn($c, CLOSE_POLICY, 'not a LyrionJS player') unless $mac;
+			return _refuse($c, CLOSE_POLICY, 'not a LyrionJS player') unless $mac;
 			if (!$s->{mac}) {
 				# One session per player: LMS must never see two connections for one MAC.
 				for my $other (values %sessions) {
@@ -390,11 +424,11 @@ sub _message {
 				$s->{mac} = $mac;
 			}
 			elsif ($mac ne $s->{mac}) {
-				return _closeConn($c, CLOSE_POLICY, 'another player');
+				return _refuse($c, CLOSE_POLICY, 'another player');
 			}
 		}
 		elsif (!$s->{mac}) {
-			return _closeConn($c, CLOSE_POLICY, 'expected HELO');
+			return _refuse($c, CLOSE_POLICY, 'expected HELO');
 		}
 	}
 	return unless @$frames && $s->{up};
@@ -430,7 +464,7 @@ sub _newSession {
 
 	my $s = {
 		id => _random(16), secret => _random(16), up => $up, conn => $c,
-		sent => 0, buf => '', bufStart => 0, out => '',
+		sent => 0, buf => '', bufStart => 0, out => '', got => 0,
 	};
 	$sessions{$s->{id}} = $s;
 	$byUp{refaddr $up} = $s->{id};
@@ -443,7 +477,8 @@ sub _newSession {
 
 sub _resume {
 	my ($c, $r) = @_;
-	my $s = $sessions{ $r->{session} || '' };
+	return _closeConn($c, CLOSE_DISABLED, 'disabled') if $prefs && !$prefs->get('enabled');
+	my $s = $sessions{ !ref $r->{session} && $r->{session} || '' };
 	my $missed = $s && sameSecret($r->{secret}, $s->{secret}) ? replayFrom($s, $r->{received}) : undef;
 	return _closeConn($c, CLOSE_NO_RESUME, 'cannot resume') unless defined $missed;
 
@@ -454,7 +489,9 @@ sub _resume {
 	Slim::Utils::Timers::killTimers($s, \&_holdExpired);
 	$s->{conn} = $c;
 	$c->{session} = $s;
-	_send($c, 0x1, to_json({ session => $s->{id}, secret => $s->{secret}, resumed => 1, hold => HOLD + 0, replay => length($missed) + 0 }));
+	# got: the bytes of the page's messages that arrived, so it can send again what didn't.
+	_send($c, 0x1, to_json({ session => $s->{id}, secret => $s->{secret}, resumed => 1, hold => HOLD + 0,
+		replay => length($missed) + 0, got => $s->{got} + 0 }));
 	_send($c, 0x2, $missed) if length $missed;
 	main::INFOLOG && $log->is_info && $log->info("Resumed LyrionJS session $s->{id} (" . length($missed) . ' bytes replayed)');
 }
@@ -506,7 +543,7 @@ sub _fromLMS {
 	my $c = $s->{conn} or return;
 	# A page that stopped reading: drop its socket rather than queue without limit. It resumes
 	# from what it did receive, if that is still held.
-	return _closeConn($c, CLOSE_DROPPED) if Slim::Networking::Select::writeNoBlockQLen($c->{sock}) > MAX_QUEUED;
+	return _closeConn($c, CLOSE_DROPPED) if _behind($c);
 	_send($c, 0x2, $data);
 }
 
@@ -517,7 +554,11 @@ sub _random {
 		read $fh, $bytes, $n;
 		close $fh;
 	}
-	$bytes = join '', map { chr int rand 256 } 1 .. $n if length($bytes) != $n;
+	if (length($bytes) != $n) {
+		# No OS random source (Windows): weaker, so session secrets are easier to guess.
+		$log->warn('No /dev/urandom: LyrionJS session secrets use a weaker random source') unless $warnedRandom++;
+		$bytes = join '', map { chr int rand 256 } 1 .. $n;
+	}
 	return unpack 'H*', $bytes;
 }
 
@@ -538,19 +579,13 @@ sub _clientLog {
 	return _plain($httpClient, $response, 429, 'Too many') if @logTimes >= LOG_PER_MIN;
 	push @logTimes, $now;
 
-	my $msg = eval { from_json($req->content) };
-	if ($prefs && !$prefs->get('clientDiagnostics')) {
-		$msg = undef;   # switched off in Settings: accepted and dropped
-	}
+	# Switched off in Settings: accepted and dropped, unread.
+	my $msg = $prefs && !$prefs->get('clientDiagnostics') ? undef : eval { from_json($req->content) };
 	if (ref $msg eq 'HASH' && ref $msg->{lines} eq 'ARRAY') {
-		my $who = substr($msg->{id} || '-', 0, 32);
+		my $who = logSafe(substr(ref $msg->{id} ? '-' : $msg->{id} // '-', 0, 32));
 		my @lines = @{ $msg->{lines} };
 		splice @lines, 200 if @lines > 200;
-		for my $line (@lines) {
-			$line = substr("$line", 0, 600);
-			$line =~ s/[\r\n]+/ /g;
-			$log->warn("[$who] $line");
-		}
+		$log->warn("[$who] " . logSafe(substr(ref $_ ? '' : "$_", 0, 600))) for @lines;
 	}
 	return _plain($httpClient, $response, 200, 'ok');
 }

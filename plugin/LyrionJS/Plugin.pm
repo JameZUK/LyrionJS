@@ -13,6 +13,7 @@ use base qw(Slim::Plugin::OPMLBased);
 use File::Basename qw(dirname);
 use File::Spec::Functions qw(catfile);
 use JSON::XS::VersionOneAndTwo;
+use List::Util qw(min);
 use Socket ();
 
 use Slim::Utils::Log;
@@ -38,9 +39,8 @@ $prefs->init({
 	pageUrl           => '',      # the player's address in links; empty: this server's DNS name
 });
 $prefs->setValidate({ validator => sub { ($_[1] || '') =~ /^(?:auto|webaudio|media)$/ } }, 'defaultOutput');
-$prefs->setValidate({ validator => sub { ($_[1] // '') =~ m{^(?:|https?://[^\s/?#]+(?:/[^\s?#]*)?)$} } }, 'pageUrl');
+$prefs->setValidate({ validator => sub { validPageUrl($_[1]) } }, 'pageUrl');
 
-use constant VERSION  => '0.2.6';
 use constant PAGE_URL => '/plugins/LyrionJS/';
 use constant ICON     => 'plugins/LyrionJS/html/images/icon.png';   # PNG: Squeezer can't show SVG
 
@@ -80,40 +80,44 @@ sub shutdownPlugin {
 
 # The player's address, as links give it: the pageUrl setting, or this server under its DNS name
 # (so every link opens the same origin, and a browser keeps one player identity), or its address.
-my ($autoUrl, $autoAt) = ('', 0);
+# The name is looked up once, without blocking LMS (AnyEvent's resolver, as LMS's own lookups);
+# until it answers, and if it doesn't, links use the address.
+my ($autoUrl, $autoFor) = ('', '');
 sub pageUrl {
-	my $url = $prefs->get('pageUrl');
-	if ($url) {
-		$url .= PAGE_URL unless $url =~ m{^https?://[^/]+/};
-		return $url;
+	if (my $url = $prefs->get('pageUrl')) {
+		# Only a host (or host and /): the player's usual path on it. Otherwise the full address.
+		return $url =~ m{^(https?://[^/]+)/?\z} ? $1 . PAGE_URL : $url;
 	}
-	if (!$autoUrl || time() - $autoAt > 3600) {
-		my $base = Slim::Utils::Network::serverURL();
-		my ($scheme, $host, $port) = $base =~ m{^(https?)://([^/:]+)(:\d+)?};
-		if ($host && $host =~ /^\d+\.\d+\.\d+\.\d+$/) {
-			my $name = _reverseName($host);
-			$base = "$scheme://$name" . ($port || '') if $name;
-		}
-		($autoUrl, $autoAt) = ($base . PAGE_URL, time());
-	}
+	my $base = Slim::Utils::Network::serverURL();
+	_lookUpName($base) if $autoFor ne $base;   # first use, or the server's address changed
 	return $autoUrl;
 }
 
-# A fully qualified name for an IPv4 address, from reverse DNS; undef if there isn't one.
-sub _reverseName {
-	my $ip = shift;
-	my $name = eval {
-		local $SIG{ALRM} = sub { die "timeout\n" };
-		alarm 2;                                   # never hold up LMS on a slow resolver
-		my $n = gethostbyaddr(Socket::inet_aton($ip), Socket::AF_INET());
-		alarm 0;
-		$n;
-	};
-	alarm 0;
-	return undef unless $name && $name =~ /^[a-z0-9-]+(?:\.[a-z0-9-]+)+$/i;
-	# Only a name that leads back to this address.
-	my $back = eval { Socket::inet_ntoa(scalar gethostbyname($name)) } || '';
-	return $back eq $ip ? lc $name : undef;
+# Is this a usable pageUrl setting (empty for automatic)? A plain http(s) address, nothing that
+# needs quoting where links are written out.
+sub validPageUrl {
+	my $u = shift // '';
+	return 1 if $u eq '';
+	return $u =~ m{^https?://[A-Za-z0-9.\-\[\]:]+(?:/[A-Za-z0-9._~!\$&()*+,;=:@%/\-]*)?\z} ? 1 : 0;
+}
+
+sub _lookUpName {
+	my $base = shift;
+	($autoFor, $autoUrl) = ($base, $base . PAGE_URL);
+	my ($scheme, $ip, $port) = $base =~ m{^(https?)://(\d+\.\d+\.\d+\.\d+)(:\d+)?} or return;
+	eval {
+		require AnyEvent::DNS;
+		# reverse_verify: only names that resolve back to this address.
+		AnyEvent::DNS::reverse_verify($ip, sub {
+			my ($name) = grep { /^[a-z0-9-]+(?:\.[a-z0-9-]+)+\.?\z/i } @_ or return;
+			return unless $autoFor eq $base;        # the address changed meanwhile
+			$name =~ s/\.\z//;
+			$autoUrl = "$scheme://" . lc($name) . ($port || '') . PAGE_URL;
+			main::INFOLOG && $log->is_info && $log->info("Player address: $autoUrl");
+			_registerLinks();
+		});
+		1;
+	} or $log->warn("Can't look up this server's name: $@");
 }
 
 # Links to the player in LMS's web UIs, with the absolute address: the classic UI's plugin menu,
@@ -135,7 +139,9 @@ sub postinitPlugin {
 	return unless Slim::Utils::PluginManager->isEnabled('Plugins::MaterialSkin::Plugin');
 	my $register = Plugins::MaterialSkin::Plugin->can('registerCustomAction') or return;
 	%materialActions = (pinned => { title => string('PLUGIN_LYRIONJS'), icon => 'music_note' });
-	$register->($_, $materialActions{$_}) for sort keys %materialActions;
+	# Material's API may change: that must never stop this plugin.
+	eval { $register->($_, $materialActions{$_}) for sort keys %materialActions; 1 }
+		or $log->warn("Can't add LyrionJS to Material Skin: $@");
 	_registerLinks();
 }
 
@@ -171,13 +177,18 @@ sub _appItems {
 		{ text => $url, weblink => $url, parseURLs => 1 },
 		{ text => cstring($request->client, 'PLUGIN_LYRIONJS_MENU_INFO'), style => 'itemNoAction', action => 'none' },
 	);
+	# The page asked for (controllers fetch in pages, even of two items).
+	my $start = $request->getParam('_index') || 0;
+	my $count = $request->getParam('_quantity');
+	$count = scalar @items unless defined $count && $count =~ /^\d+$/;
+	$start = 0 unless $start =~ /^\d+$/;
 	my $i = 0;
-	for my $item (@items) {
+	for my $item (grep { defined } @items[$start .. min($start + $count, scalar @items) - 1]) {
 		$request->addResultLoop('item_loop', $i, $_, $item->{$_}) for sort keys %$item;
 		$i++;
 	}
-	$request->addResult('count', $i);
-	$request->addResult('offset', 0);
+	$request->addResult('count', scalar @items);
+	$request->addResult('offset', $start);
 	$request->addResult('window', { windowStyle => 'text_list' });
 	$request->setStatusDone();
 }
@@ -187,7 +198,7 @@ sub _appFeed {
 	my ($client, $callback) = @_;
 	my $url = pageUrl();
 	$callback->({ items => [
-		{ name => $url, type => 'link', url => $url, weblink => $url },
+		{ name => $url, type => 'text', weblink => $url },   # a link to open, not a feed to fetch
 		{ name => cstring($client, 'PLUGIN_LYRIONJS_MENU_INFO'), type => 'text' },
 	] });
 }
@@ -199,7 +210,7 @@ sub _config {
 		enabled           => $prefs->get('enabled') ? 1 : 0,
 		defaultOutput     => $prefs->get('defaultOutput') || 'auto',
 		clientDiagnostics => $prefs->get('clientDiagnostics') ? 1 : 0,
-		version           => VERSION,
+		version           => (Slim::Utils::PluginManager->dataForPlugin(__PACKAGE__) || {})->{version} || '',   # install.xml's
 	});
 	$response->code(200);
 	$response->content_type('application/json');

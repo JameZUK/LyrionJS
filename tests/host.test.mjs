@@ -95,15 +95,33 @@ test('a socket that opens but never says hello is abandoned', () => {
   c.close(); c2.close();
 });
 
-test('a socket silent for 20 s is dropped and resumed', () => {
+test('a socket silent for two missed LMS polls is dropped and resumed (before LMS gives up at 15 s)', () => {
   const env = fakeEnv();
   const c = LJ.controlSocket('ws://x', env);
   env.sockets[0]._open(); env.sockets[0]._text({ session: 'S', secret: 'K', resumed: false });
-  env.advance(23000);
+  env.advance(10500);
+  assert.equal(env.sockets.length, 1, 'one missed poll is not death');
+  env.advance(3000);
   assert.equal(env.sockets.length, 2, 'a new socket to resume on');
   env.sockets[1]._open();
   assert.ok(JSON.parse(env.sockets[1].sent[0]).resume);
   c.close();
+});
+
+test('the plugin\'s close codes end the session without a resume attempt; a drop resumes', () => {
+  const session = (code) => {
+    const env = fakeEnv(); let closed = null;
+    const c = LJ.controlSocket('ws://x', env); c.onclose = (k) => { closed = k; };
+    env.sockets[0]._open(); env.sockets[0]._text({ session: 'S', secret: 'K', resumed: false });
+    env.sockets[0]._close(code); env.advance(3000);
+    c.close();
+    return { tries: env.sockets.length - 1, closed };
+  };
+  // docs/ARCHITECTURE.md, "Close codes the plugin sends"
+  for (const code of [1000, 1001, 1002, 1008, 1009, 1011, 1013, 4000, 4403, 4404]) {
+    assert.deepEqual(session(code), { tries: 0, closed: code }, 'close code ' + code);
+  }
+  for (const code of [1005, 1006]) assert.ok(session(code).tries > 0, 'resumes after ' + code);
 });
 
 // --- streams ---------------------------------------------------------------------
@@ -157,6 +175,21 @@ test('a stream that stalls with room to send is given up after 30 s', async () =
   assert.equal(ended, false);
 });
 
+test('a stream whose server never answers is given up', async () => {
+  const env = fakeEnv();
+  env.fetch = (u, o) => new Promise((res, rej) => o.signal.addEventListener('abort', () => rej(new Error('aborted'))));
+  const s = LJ.openStream({ ip: '10.0.0.9', port: 9000, win: 1e6 }, env);
+  let ended = null; s.ondata = () => {}; s.onclose = (clean) => { ended = clean; };
+  s.send(new TextEncoder().encode('GET /x HTTP/1.0\r\n\r\n'));
+  for (let i = 0; i < 5; i++) await tick();
+  env.advance(10000);
+  assert.equal(ended, null, 'still waiting at 10 s');
+  env.advance(10000);
+  for (let i = 0; i < 5; i++) await tick();
+  assert.equal(ended, false, 'given up by 20 s');
+  assert.equal(env.timers.length, 0, 'no timers left');
+});
+
 // --- the output stage and resampler ---------------------------------------------------
 function outputCore() {
   let frame = 0; const msgs = [];
@@ -202,3 +235,24 @@ test('resampler: chunked output equals one block, and the length follows the rat
   assert.ok(worst < 1e-6, 'worst ' + worst);
   assert.ok(Math.abs(whole.length - 48000) < 5);
 });
+
+test('frames sent into a socket that died silently are sent again on resume, from what arrived', () => {
+  const env = fakeEnv();
+  const c = LJ.controlSocket('ws://x', env);
+  const a = env.sockets[0]; a._open(); a._text({ session: 'S', secret: 'K', resumed: false, hold: 10 });
+  const helo = new Uint8Array(40), stmd = LJ.buildStat({ event: 'STMd', jiffies: 1 }), hb = LJ.buildStat({ event: 'STMt', jiffies: 2 });
+  c.send(helo); c.send(stmd); c.send(hb);            // the STMd and heartbeat never arrive
+  a._close(1006); env.advance(300);
+  const b = env.sockets[1]; b._open();
+  b._text({ session: 'S', secret: 'K', resumed: true, hold: 10, replay: 0, got: helo.length });
+  const again = b.sent.slice(1).map((u8) => LJ.latin1(u8.subarray(8, 12)));
+  assert.deepEqual(again, ['STMd'], 'the lost STMd once, never the heartbeat');
+  // Everything arrived: nothing sent again.
+  c.send(stmd);
+  b._close(1006); env.advance(300);
+  const d = env.sockets[2]; d._open();
+  d._text({ session: 'S', secret: 'K', resumed: true, hold: 10, replay: 0, got: helo.length + 2 * stmd.length });
+  assert.equal(d.sent.length, 1, 'only the resume request');
+  c.close();
+});
+

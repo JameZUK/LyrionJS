@@ -23,6 +23,8 @@
 
   /** DSCO reasons (why a stream ended). */
   const DSCO = { CLOSED: 0, RESET: 1, REMOTE_RESET: 2, UNREACHABLE: 3, TIMEOUT: 4 };
+  /** The plugin's close codes that end this player here (docs/ARCHITECTURE.md). */
+  const CLOSE = { REPLACED: 4000, DISABLED: 4403 };
 
   /** One stream LMS asked for, from connecting to its last sample. */
   class Track {
@@ -77,6 +79,7 @@
       this.tracks = [];
       this.seq = 0; this.ctl = null; this.connected = false; this.everConnected = false;
       this.audibleSeq = null; this.stmsSent = new Set(); this.stmuSent = true; this.stmoSent = false;
+      this.stmsOwed = null; this.stmuOwed = false;   // raised while the control was down: sent after HELO
       this.lastStat = 0; this.backoff = 1000; this.serverVersion = ''; this.gain = 1; this.enabled = true;
       this.listeners = new Set(); this.stopped = true; this.pumping = false; this.pumpQueued = false; this.lastError = '';
       this.rx = new ByteQueue(8192); this.rxIn = 0; this.rxPos = 0; this.replayEnd = 0;
@@ -87,6 +90,7 @@
     emit(what) { for (const fn of this.listeners) { try { fn(what, this); } catch (e) { this.log('listener', e); } } }
 
     start() {
+      if (!this.stopped) return;
       this.stopped = false; this._connect();
       if (!this.timer && G.setInterval && !this.noTimer) this.timer = G.setInterval(() => this.tick(), 100);
     }
@@ -118,7 +122,7 @@
         const cur = this.tracks[this.tracks.length - 1];
         this._send(buildHelo({ mac: this.mac, uuid: this.uuid, reconnect: this.everConnected && this.state !== 'stopped',
           bytesReceived: cur ? cur.bytes : 0, caps: this.capabilities() }));
-        this.everConnected = true; this.emit('connected');
+        this.everConnected = true; this._sendOwed(); this.emit('connected');
       };
       t.ondata = (d, replayed) => {
         if (this.ctl !== t) return;
@@ -126,16 +130,24 @@
         if (replayed) this.replayEnd = this.rxIn;
         this._control();
       };
-      t.onclose = () => {
+      t.onclose = (code) => {
         if (this.ctl !== t) return;
         this.connected = false; this.emit('disconnected');
         if (this.stopped) return;
+        // The plugin's close codes (docs/ARCHITECTURE.md): another session took this player, or
+        // browser players are switched off. Connecting again would only fight it, or be refused.
+        if (code === CLOSE.REPLACED || code === CLOSE.DISABLED) {
+          this.lastError = code === CLOSE.REPLACED ? 'Another session took this player' : 'Browser players are switched off in LMS';
+          this.stop(); this.emit(code === CLOSE.REPLACED ? 'replaced' : 'disabled');
+          return;
+        }
         const wait = this.backoff; this.backoff = Math.min(this.backoff * 2, 15000);
         G.setTimeout(() => { if (!this.stopped && this.ctl === t) this._connect(); }, wait);
       };
     }
 
-    _send(frame) { if (this.ctl && this.connected) this.ctl.send(frame); }
+    /** False if there is no session to send it on (the frame is dropped). */
+    _send(frame) { if (!this.ctl || !this.connected) return false; this.ctl.send(frame); return true; }
 
     _control() {
       for (;;) {
@@ -176,6 +188,7 @@
     }
 
     _stat(event, serverTs = 0) {
+      if (!this.ctl || !this.connected) return false;
       const now = this.now();
       const cur = this.tracks[this.tracks.length - 1];
       const rate = this.output.rate || 44100;
@@ -187,6 +200,16 @@
       }));
       this.lastStat = now;
       if (this.onStat) this.onStat(event);
+      return true;
+    }
+
+    /** STMs, STMd and STMu that LMS must not miss: raised between sessions, they wait for the next. */
+    _sendOwed() {
+      const s = this.stmsOwed;
+      if (s != null && !this.stmsSent.has(s)) { if (!this._stat('STMs')) return; this.stmsSent.add(s); }
+      this.stmsOwed = null;
+      this._readyForNext();
+      if (this.stmuOwed && this._stat('STMu')) this.stmuOwed = false;
     }
 
     // -- stream commands ----------------------------------------------------
@@ -213,7 +236,7 @@
           if (this.tracks.length) {
             const now = this.now();
             const ahead = (s.replayGain - Math.floor(now)) | 0;   // a time in our jiffies (wraps at 2^32)
-            if (s.replayGain !== 0 && ahead > 0 && ahead <= MAX_START_AHEAD_MS) this.output.startAt(now + ahead);
+            if (s.replayGain !== 0 && ahead > 0 && ahead <= MAX_START_AHEAD_MS) this.output.startAt(Math.floor(now) + ahead);
             else this.output.play();
             this.state = 'playing'; this.stmuSent = false;
           }
@@ -248,14 +271,14 @@
       const make = this.decoders[s.format];
       const track = new Track(seq, s, make ? make(s) : null);
       this.tracks.push(track);
-      this.stmuSent = false; this.stmoSent = false; this.lastError = '';
+      this.stmuSent = false; this.stmuOwed = false; this.stmoSent = false; this.lastError = '';
       if (!track.decoder) {
         track.decoded = track.reported = true;
         this.lastError = 'Unsupported format ' + s.format;
         this._stat('STMn'); return;
       }
       const dec = track.decoder;
-      dec.onError = (msg) => { this.lastError = msg; };
+      dec.onError = (msg) => { if (!track.dead) this._failTrack(track, msg); };
       dec.onBlock = (rate, chans) => {
         if (track.dead) return;   // late output from an asynchronous decoder
         if (track.gain !== 1) for (const c of chans) for (let i = 0; i < c.length; i++) c[i] *= track.gain;
@@ -271,9 +294,9 @@
       st.onclose = (clean) => {
         if (!track.streamOpen || track.dead) return;
         track.streamOpen = false;
-        if (!track.headersDone) this.lastError = 'Stream failed';
-        dec.end();
         this._send(clientFrame('DSCO', new Uint8Array([clean ? DSCO.CLOSED : DSCO.REMOTE_RESET])));
+        if (!track.headersDone) { this._failTrack(track, 'Stream failed'); return; }
+        dec.end();
         this.pump();
       };
       this._stat('STMc');
@@ -296,6 +319,7 @@
         if (!d.length) return;
       }
       track.bytes += d.length;
+      if (track.decoded) { this._ack(track); return; }   // past the end of the audio (a WAV trailer)
       if (track.icy) track.icy.feed(d, (a) => track.decoder.feed(a), (m) => this._send(clientFrame('META', m)));
       else track.decoder.feed(d);
       this.pump();
@@ -309,12 +333,27 @@
       this.output.endSeq(track.seq);
       if (wasOpen) this._send(clientFrame('DSCO', new Uint8Array([DSCO.REMOTE_RESET])));
       this._stat('STMn');
+      this._nothingToPlay(track);
+    }
+
+    /**
+     * The newest track ended without a sound and nothing else is queued: stop, as squeezelite
+     * does once its output runs dry (with STMu, unless the track already failed with STMn).
+     */
+    _nothingToPlay(track, event) {
+      if (track !== this.tracks[this.tracks.length - 1] || track.frames || this.output.queuedSeconds() > 0) return;
+      if (this.state !== 'waiting' && this.state !== 'loaded') return;
+      this.state = 'stopped'; this.stmuSent = true; this.audibleSeq = null;
+      if (event) this.stmuOwed = !this._stat(event);
+      this.emit('state');
     }
 
     _ack(track) {
       if (!track.stream || !track.streamOpen) return;
-      const consumed = track.headBytes + track.bytes - track.decoder.buffered;
-      if (consumed - track.acked >= ACK_EVERY || (track.decoder.buffered === 0 && consumed > track.acked)) {
+      // A decoder that is done wants nothing more: all that was delivered counts as consumed.
+      const held = track.decoded ? 0 : track.decoder.buffered;
+      const consumed = track.headBytes + track.bytes - held;
+      if (consumed - track.acked >= ACK_EVERY || (held === 0 && consumed > track.acked)) {
         track.acked = consumed; track.stream.ack(consumed);
       }
     }
@@ -322,7 +361,7 @@
     _flush() {
       for (const t of this.tracks) t.kill();
       this.tracks = []; this.output.flush(); this.state = 'stopped'; this.audibleSeq = null;
-      this.stmuSent = true; this.stmoSent = false;
+      this.stmuSent = true; this.stmsOwed = null; this.stmuOwed = false; this.stmoSent = false;
     }
 
     // -- decoding -------------------------------------------------------------
@@ -343,7 +382,11 @@
           catch (e) { this.log('decoder', e); this._failTrack(t, 'Decoding failed: ' + (e && e.message || e)); continue; }
           this._ack(t);
           if (!t.describe && t.decoder.describe) t.describe = t.decoder.describe() || '';
-          if (r === 'done') { t.decoded = true; this.output.endSeq(t.seq); this._readyForNext(); continue; }
+          if (r === 'done') {
+            if (t.dead) continue;   // failed while pumping (onError)
+            t.decoded = true; this.output.endSeq(t.seq); this._ack(t); this._readyForNext(); this._nothingToPlay(t, 'STMu');
+            continue;
+          }
           if (r === 'need') break;
         }
         this._autostart();
@@ -360,7 +403,7 @@
     _readyForNext() {
       for (const t of this.tracks) {
         if (!t.decoded || t.reported || t.dead) continue;
-        if (this.stmsSent.has(t.seq) || !t.frames) { t.reported = true; this._stat('STMd'); }
+        if (this.stmsSent.has(t.seq) || !t.frames) { if (!this._stat('STMd')) return; t.reported = true; }
       }
     }
 
@@ -381,7 +424,7 @@
         const a = this.output.audible(now);
         if (a && a.seq != null && a.seq !== this.audibleSeq) {
           this.audibleSeq = a.seq;
-          if (!this.stmsSent.has(a.seq)) { this.stmsSent.add(a.seq); this._stat('STMs'); this._readyForNext(); }
+          if (!this.stmsSent.has(a.seq)) { this.stmsOwed = a.seq; this._sendOwed(); }
           // Tracks heard to the end are no longer of interest.
           this.tracks = this.tracks.filter((t) => t.seq >= a.seq || !t.decoded);
           for (const seq of this.stmsSent) if (seq < a.seq) this.stmsSent.delete(seq);
@@ -390,7 +433,7 @@
         if (this.state === 'playing' && this.output.underrun) {
           const allDone = this.tracks.every((t) => t.decoded);
           if (allDone && !this.stmuSent) {
-            this.stmuSent = true; this.state = 'stopped'; this._stat('STMu'); this.audibleSeq = null; this.emit('state');
+            this.stmuSent = true; this.state = 'stopped'; this.stmuOwed = !this._stat('STMu'); this.audibleSeq = null; this.emit('state');
           } else if (!allDone && !this.stmoSent && this.audibleSeq != null) {
             this.stmoSent = true; this._stat('STMo');
           }

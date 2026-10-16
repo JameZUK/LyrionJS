@@ -39,7 +39,7 @@
   const navKey = (e) => (e.params && e.params.navId) || e.name;
   function markNav(name) { for (const b of document.querySelectorAll('.nav-item')) b.classList.toggle('active', b.dataset.view === name); }
 
-  function build(entry) {
+  function buildPage(entry) {
     try {
       const make = VIEWS[entry.name] || VIEWS.now;
       return make(entry.params || {});
@@ -54,7 +54,7 @@
     const cur = S.shown;
     if (cur && cur !== entry && cur.page && cur.page.onHide) cur.page.onHide();
     main.textContent = '';
-    if (!entry.page) entry.page = build(entry);
+    if (!entry.page) entry.page = buildPage(entry);
     const p = entry.page;
     p.head = h('h1', { text: p.title || '' });
     main.append(h('div', { class: 'view-head' }, S.nav.length > 1 ? btn('back', 'Back', () => back()) : null, p.head,
@@ -73,7 +73,7 @@
     if (!p) return;
     if (p.onHide && S.shown === entry) p.onHide();
     if (p.dispose) try { p.dispose(); } catch (e) { console.error(e); }
-    if (p.el) for (const l of p.el.querySelectorAll('.lazy')) if (l.dispose) l.dispose();
+    if (p.el) disposeLists(p.el);
     entry.page = null;
   }
 
@@ -100,6 +100,9 @@
     if (n > 0) history.go(-n);
   }
   window.addEventListener('popstate', (e) => {
+    // Back leaves whatever was open over the page: a menu or dialog belongs to the page left.
+    closeSheet();
+    document.body.classList.remove('nav-open');
     if (ignorePop) { ignorePop--; history.replaceState({ d: 1 }, ''); return; }
     const d = (e.state && e.state.d) || 1;
     if (d >= S.nav.length) {
@@ -111,8 +114,15 @@
     show(S.nav[S.nav.length - 1]);
   });
 
-  /** The controlled player changed: views that show its settings or state start again. */
+  /**
+   * The controlled player changed: views that show its settings or state start again, those
+   * further back too (they are built afresh when Back reaches them).
+   */
   function playerChanged() {
-    const e = S.shown;
-    if (e && e.page && e.page.perPlayer) { dispose(e); show(e); }
+    const top = S.shown;
+    let rebuild = false;
+    for (const e of S.nav) {
+      if (e.page && e.page.perPlayer) { if (e === top) rebuild = true; dispose(e); }
+    }
+    if (rebuild) show(top);
   }

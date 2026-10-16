@@ -17,6 +17,9 @@
     return { str: mac, bytes: new Uint8Array(mac.split(':').map((x) => parseInt(x, 16))) };
   }
 
+  /** iPhone, iPad or iPod (iPadOS Safari claims to be a Mac; touch support gives it away). */
+  const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+
   function defaultName() {
     const ua = navigator.userAgent;
     const b = /Edg\//.test(ua) ? 'Edge' : /Firefox\//.test(ua) ? 'Firefox' : /Chrome\//.test(ua) ? 'Chrome' : /Safari\//.test(ua) ? 'Safari' : 'Browser';

@@ -137,9 +137,12 @@
       this.block = block; this.fragmentFrames = fragmentFrames;
       this.fmt = null; this.pending = null; this.frames = []; this.sample = 0; this.base = 0; this.seqNo = 0;
     }
-    /** Seconds of audio written (appended or pending) on this writer's timeline. */
-    get end() { return this.fmt ? (this.base + this.sample + this._pendingFrames()) / this.fmt.rate : this.startAt || 0; }
+    /** Seconds of audio pushed (in fragments, in frames not yet in one, or pending) on this writer's timeline. */
+    get end() { return this.fmt ? (this.base + this.sample + this._heldSamples() + this._pendingFrames()) / this.fmt.rate : this.startAt || 0; }
+    /** Seconds of audio returned as fragments: the most the media element can have to play. */
+    get written() { return this.fmt ? (this.base + this.sample) / this.fmt.rate : this.startAt || 0; }
     _pendingFrames() { return this.pending ? this.pending.len : 0; }
+    _heldSamples() { let n = 0; for (const f of this.frames) n += f.samples; return n; }
     /** Start writing at `t` seconds on the media timeline (after a flush or a new format). */
     restart(t) { this.fmt = null; this.pending = null; this.frames = []; this.startAt = t; }
     /** Add PCM; returns segments ready to append ({init} or {data, start, end}). */
@@ -177,7 +180,7 @@
     }
     _frame(chans, off, n) {
       const f = this.fmt;
-      this.frames.push({ data: flacVerbatimFrame(chans, off, n, f.bits, this.sample + this.frames.reduce((a, x) => a + x.samples, 0)), samples: n });
+      this.frames.push({ data: flacVerbatimFrame(chans, off, n, f.bits, this.sample + this._heldSamples()), samples: n });
     }
     _fragment() {
       const start = this.base + this.sample;

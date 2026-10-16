@@ -9,12 +9,17 @@
 (function (G) {
   const LJ = G.LJ;
 
-  const DEAD_MS = 20000;          // LMS talks to every player at least every 5 s
+  // LMS talks to every player at least every 5 s, and drops one silent for 15 s: two missed
+  // polls mean dead, early enough to resume before LMS gives up.
+  const DEAD_MS = 11000;
   const CONNECT_MS = 6000;        // a socket must open and say hello within this
+  const STREAM_OPEN_MS = 15000;   // a stream's server must answer (send the response head) within this
   const STREAM_IDLE_MS = 30000;   // a stream with room to send that sends nothing is dead
-  /** Close codes after which a session can't be resumed (docs/ARCHITECTURE.md). */
-  const NO_RESUME = [1001, 1008, 1011, 1013, 4000, 4403, 4404];
+  /** Close codes the plugin sends (docs/ARCHITECTURE.md): the session is over, resuming is
+   *  pointless. Only drops (1005, 1006, unknown codes) are resumed. */
+  const NO_RESUME = [1000, 1001, 1002, 1008, 1009, 1011, 1013, 4000, 4403, 4404];
   const BACKOFF = [250, 600, 1200, 2500];
+  const RECENT_MAX = 200;         // frames kept to send again after a resume (STATs are small and few)
 
   const isHeartbeat = (u8) => u8.length >= 12 && LJ.latin1(u8.subarray(0, 4)) === 'STAT' && LJ.latin1(u8.subarray(8, 12)) === 'STMt';
 
@@ -36,9 +41,16 @@
     const c = { onopen: null, onresumed: null, ondata: null, onclose: null };
     let ws = null, session = null, received = 0, attached = false, closed = false;
     let outbox = [], lastRx = 0, gapSince = null, hold = 10, tries = 0, timer = null, connectTimer = null, replayLeft = 0;
+    // Bytes sent in this session, and the frames (not heartbeats) among them: a socket that died
+    // without a word loses what was sent into it, and a resume says how much arrived ("got").
+    let sent = 0, recent = [];
+    const put = (u8) => {
+      ws.send(u8); sent += u8.length;
+      if (!isHeartbeat(u8)) { recent.push({ end: sent, u8 }); if (recent.length > RECENT_MAX) recent.shift(); }
+    };
 
     c.send = (u8) => {
-      if (attached && ws && ws.readyState === 1) { ws.send(u8); return; }
+      if (attached && ws && ws.readyState === 1) { put(u8); return; }
       // Away: keep what LMS must hear (track started, decoder done…); never heartbeats.
       if (session && !isHeartbeat(u8)) { outbox.push(u8); if (outbox.length > 500) outbox.shift(); }
     };
@@ -87,13 +99,18 @@
       const resumed = !!m.resumed && !!session && m.session === session.session;
       session = m; hold = +m.hold || 10; attached = true; tries = 0; gapSince = null;
       if (resumed) {
+        // What was sent into the dead socket and never arrived goes again, before what was held.
+        let again = [];
+        if (m.got != null && +m.got <= sent) { again = recent.filter((f) => f.end > +m.got).map((f) => f.u8); sent = +m.got; }
+        recent = [];
         const q = outbox; outbox = [];
-        for (const f of q) ws.send(f);
+        for (const f of again) put(f);
+        for (const f of q) put(f);
         replayLeft = +m.replay || 0;
-        diag('socket', `resumed: ${replayLeft} bytes replayed, ${q.length} held frames sent`);
+        diag('socket', `resumed: ${replayLeft} bytes replayed, ${again.length} lost frames sent again, ${q.length} held frames sent`);
         if (!replayLeft && c.onresumed) c.onresumed();
       } else {
-        received = 0; outbox = []; replayLeft = 0;
+        received = 0; outbox = []; replayLeft = 0; sent = 0; recent = [];
         if (c.onopen) c.onopen();
       }
     }
@@ -117,7 +134,7 @@
       if (c.onclose) c.onclose(code);
     }
 
-    // A socket that has heard nothing for 20 s is dead even if nobody said so: abandon it.
+    // A socket that has heard nothing for DEAD_MS is dead even if nobody said so: abandon it.
     function drop(why) {
       if (!ws) return;
       const w = ws; ws = null;
@@ -166,12 +183,16 @@
       }
       const url = ip ? `http://${ip}:${port}${m[2]}` : new URL(m[2], env.origin).href;
       let res;
+      // A server that never answers would leave the player waiting for ever (no DSCO, no STMn).
+      const noAnswer = env.setTimeout(() => { if (!done) { diag('stream', 'no answer; giving up'); end(false); } }, STREAM_OPEN_MS);
       try {
         res = await env.fetch(url, { method: m[1].toUpperCase(), headers, signal: ctrl.signal, cache: 'no-store',
           credentials: ip ? 'omit' : 'same-origin', mode: ip ? 'cors' : 'same-origin' });
       } catch (e) {
         if (!done) diag('stream', `${ip ? 'direct stream ' + ip + ':' + port : 'stream'} failed: ${e.message}`);
         return end(false);
+      } finally {
+        env.clearTimeout(noAnswer);
       }
       if (done) return;
       // The response head, as a player would have read it off the socket (for RESP).

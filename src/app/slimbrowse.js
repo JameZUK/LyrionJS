@@ -18,11 +18,14 @@
   // and any future plugin appear here without special code.
   const STANDARD_MYMUSIC = /^(myMusicArtists|myMusicAlbums|myMusicGenres|myMusicYears|myMusicNewMusic|myMusicMusicFolder|myMusicPlaylists|myMusicSearch|randomplay$|pluginLyrionJS$)/;
 
+  let menusSeq = 0;
   async function loadPluginMenus() {
     const player = S.target || S.localId;
     if (!player) return;
+    const my = ++menusSeq;
     try {
       const r = await S.lms.rpc(player, ['menu', 0, 1000, 'direct:1']);
+      if (my !== menusSeq) return;   // a newer request (another player) answers instead
       S.pluginMenus = (r.item_loop || [])
         .filter((i) => (i.node === 'myMusic' || i.node === 'extras') && i.id && !STANDARD_MYMUSIC.test(i.id) && i.actions && i.actions.go)
         .sort((a, b) => (+a.weight || 0) - (+b.weight || 0) || String(a.text).localeCompare(String(b.text)));
@@ -126,9 +129,10 @@
       if (r && r.item_loop && !next) { push('jive', { action: a, title, input, first: r }); return; }
       if (which === 'play') toast('Playing'); else if (which === 'add') toast('Added to the queue'); else if (which === 'add-hold') toast('Playing next');
       // A setting changed in place: show its new state.
-      if (!next && (which === 'on' || which === 'off' || item.radio != null || item.choiceStrings)) { if (ctx.reload) ctx.reload(); pollSoon(150); return; }
+      if (!next && (which === 'on' || which === 'off' || item.radio != null || item.choiceStrings)) { if (ctx.reload) ctx.reload(); pollSoon(150); return true; }
       jiveNext(next, ctx);
-    } catch (e) { fail(e); }
+      return true;
+    } catch (e) { fail(e); return false; }
   }
 
   const firstLine = (t) => String(t == null ? '' : t).split('\n')[0];
@@ -140,7 +144,9 @@
     // Settings-style items: a switch, a choice, or one of a set.
     if (item.checkbox != null) {
       const sw = h('input', { type: 'checkbox', class: 'switch', checked: +item.checkbox === 1, 'aria-label': lines[0] });
-      sw.addEventListener('change', () => jiveActivate(item, base, sw.checked ? 'on' : 'off', ctx));
+      sw.addEventListener('change', async () => {
+        if (!(await jiveActivate(item, base, sw.checked ? 'on' : 'off', ctx))) sw.checked = !sw.checked;   // failed: as it was
+      });
       return h('label', { class: 'setting' }, h('span', { text: lines[0] }), sw);
     }
     const choices = item.actions && item.actions.do && item.actions.do.choices;
@@ -167,17 +173,22 @@
     });
   }
 
-  /** p: { action, title?, input?, first? (the first page, already fetched), navId? } */
+  /**
+   * p: { action, title?, input?, first?, navId? }. first: a command's answer that was a menu. The
+   * command is never run again for that page (it may not be safe to repeat), so the page shows
+   * just that answer: no further pages, no reload, and it isn't rebuilt for another player.
+   */
   VIEWS.jive = (p) => {
     const holder = h('div');
-    let base = null, first = p.first || null;
-    const page = { title: p.title || '', el: holder, perPlayer: true };
+    const answer = p.first || null;
+    let base = null;
+    const page = { title: p.title || '', el: holder, perPlayer: !answer };
     const ctx = { textOnly: false };
     const build = () => swap(holder, lazyList({
       page: 100, empty: 'Nothing here.',
       fetch: async (s, n) => {
-        let r;
-        if (s === 0 && first) { r = first; first = null; } else r = await jiveFetch(p.action, s, n, p.input);
+        if (answer && s > 0) return { items: [], total: s, consumed: 0 };
+        const r = answer || await jiveFetch(p.action, s, n, p.input);
         if (r.base) base = r.base;
         if (s === 0) {
           ctx.textOnly = !!(r.window && /text/.test(r.window.menustyle || r.window.windowStyle || ''));
@@ -185,11 +196,12 @@
           if (t && !p.title) setTitle(page, t);
         }
         const items = r.item_loop || [];
-        return { items, total: +r.count || 0, consumed: items.length };
+        return { items, total: answer ? items.length : +r.count || 0, consumed: items.length };
       },
       render: (it) => jiveRow(it, () => base, ctx),
     }));
-    ctx.reload = build;
+    // A setting changed on a command's answer: its switch already shows the new state.
+    ctx.reload = answer ? () => pollSoon(150) : build;
     build();
     return page;
   };

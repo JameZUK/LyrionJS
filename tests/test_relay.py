@@ -58,7 +58,9 @@ class Pure(unittest.TestCase):
         s.keep(b"x" * 1000)
         self.assertEqual(s.replay_from(400), b"x" * 600)
         self.assertIsNone(s.replay_from(1001))
-        self.assertIsNone(s.replay_from("10"))
+        self.assertEqual(s.replay_from("990"), b"x" * 10, "digits as a string, as the plugin accepts")
+        for bad in ("1e3", "x", 5.5, True, None):
+            self.assertIsNone(s.replay_from(bad))
         s.keep(b"y" * relay.REPLAY_BYTES)
         self.assertIsNone(s.replay_from(10))
         self.assertEqual(len(s.replay_from(s.sent - 5)), 5)
@@ -285,6 +287,48 @@ class WithFakeLms(unittest.IsolatedAsyncioTestCase):
     async def test_config_json(self):
         resp = await self.http(b"GET /plugins/LyrionJS/config.json HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n")
         self.assertEqual(json.loads(resp.split(b"\r\n\r\n", 1)[1])["enabled"], 1)
+
+
+    async def test_resume_reports_what_arrived_and_policy_closes_end_the_session(self):
+        r, w, h = await self.hello()
+        hl = helo([2, 0x4C, 0x4A, 5, 5, 5])
+        w.write(frame(hl))
+        for _ in range(50):
+            if self.slim_rx:
+                break
+            await asyncio.sleep(0.02)
+        w.transport.abort()
+        await asyncio.sleep(0.1)
+        r2, w2, _ = await self.ws()
+        w2.write(frame(json.dumps({"resume": {"session": h["session"], "secret": h["secret"], "received": "0"}}).encode(), 0x1))
+        _, data = await self.recv(r2)
+        self.assertEqual(json.loads(data)["got"], len(hl), "the bytes of the page's messages that arrived")
+        w2.write(frame(helo([0, 4, 0x20, 9, 9, 9])))       # then breaks the rules
+        self.assertEqual(await self.close_code(r2), 1008)
+        await asyncio.sleep(0.05)
+        self.assertNotIn(h["session"], self.relay.sessions, "a refused session is ended, not held")
+        w2.close()
+
+    async def test_malformed_resume_and_a_session_without_helo(self):
+        for bad in ({"resume": {"session": ["a"], "secret": "x", "received": 0}}, {"resume": {"session": "x", "secret": 5}}):
+            r, w, _ = await self.ws()
+            w.write(frame(json.dumps(bad).encode(), 0x1))
+            self.assertEqual(await self.close_code(r), 4404)
+            w.close()
+        r, w, _ = await self.ws()
+        w.write(frame(("[" * 5000 + "]" * 5000).encode(), 0x1))   # deeply nested
+        self.assertEqual(await self.close_code(r), 1008)
+        w.close()
+        old, relay.HELLO_WAIT = relay.HELLO_WAIT, 0.3
+        try:
+            r, w, _ = await self.hello()
+            self.assertEqual(await self.close_code(r), 1008, "no HELO in time")
+            w.close()
+        finally:
+            relay.HELLO_WAIT = old
+
+    def test_log_text_is_one_safe_line(self):
+        self.assertEqual(relay.log_safe("a\nb\x1b[31mc\u2028d"), "a b [31mc d")
 
 
 if __name__ == "__main__":

@@ -12,6 +12,7 @@
   // tap that should unlock sound then does nothing.
   const SILENT_WAV = 'data:audio/wav;base64,UklGRrQBAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YZABAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA';
   const KEEP_BEHIND_S = 10;      // played audio kept buffered (for small skips back)
+  const FULL_KEEP_S = 1;         // …and when the buffer is full
   const EVICT_EVERY_MS = 5000;
   const UNLOCK_TIMEOUT_MS = 2500;
   const FAIL_LIMIT = 3, FAIL_WINDOW_MS = 10000;   // media source failures before giving up
@@ -34,6 +35,9 @@
     return new Promise((resolve) => {
       const MS = mediaSourceClass();
       if (!MS || !mediaSupported()) return resolve(false);
+      try { run(MS, resolve); } catch (e) { resolve(false); }   // a browser that throws can't use it
+    });
+    function run(MS, resolve) {
       const el = document.createElement('audio');
       el.muted = true; el.disableRemotePlayback = true;
       const ms = new MS();
@@ -60,7 +64,7 @@
         } catch (e) { done(false); }
       }, { once: true });
       el.src = url;
-    });
+    }
   }
 
   /**
@@ -127,7 +131,7 @@
       this.listeners = [];
       const on = (target, ev, fn) => { target.addEventListener(ev, fn); this.listeners.push([target, ev, fn]); };
       on(el, 'timeupdate', () => this.onReport && this.onReport());
-      on(el, 'waiting', () => { this._unstick(); if (this.onReport) this.onReport(); });
+      on(el, 'waiting', () => { this._makeRoom(); this._unstick(); if (this.onReport) this.onReport(); });
       on(el, 'playing', () => this.onState && this.onState());
       on(el, 'pause', () => {
         if (this.onState) this.onState();
@@ -140,8 +144,8 @@
         this._fail('element error ' + (el.error && el.error.code));
       });
       this.intervals = [
-        setInterval(() => { if (this.playing) this._unstick(); }, 250),
-        setInterval(() => { this._evict(KEEP_BEHIND_S); this.sbq.run(); }, EVICT_EVERY_MS),
+        setInterval(() => { if (this.playing) { this._makeRoom(); this._unstick(); } }, 250),
+        setInterval(() => { if (this.sbq.full) this._makeRoom(); else this._evict(KEEP_BEHIND_S); this.sbq.run(); }, EVICT_EVERY_MS),
       ];
       this._open();
     }
@@ -150,12 +154,16 @@
       const MS = mediaSourceClass();
       const ms = this.ms = new MS();
       this.sbq.detach();
+      this.tookAudio = false;   // until an append to this source succeeds
       ms.addEventListener('sourceopen', () => {
         if (ms !== this.ms) return;
         try {
           const sb = ms.addSourceBuffer(MIME);
           sb.mode = 'segments';
-          sb.addEventListener('updateend', () => this._unstick());
+          sb.addEventListener('updateend', () => {
+            try { if (ms === this.ms && sb.buffered.length) this.tookAudio = true; } catch (e) { /* removed */ }
+            this._unstick();
+          });
           sb.addEventListener('bufferedchange', () => this._unstick());   // Managed Media Source evicts by itself
           sb.addEventListener('error', () => this.diag('media', 'source buffer error'));
           this.sbq.attach(sb);
@@ -172,15 +180,20 @@
      * The element or its source failed: start a fresh one, and tell the host (audio was lost).
      * A browser that fails every fresh source too (it can't play the format after all) would
      * loop for ever: after FAIL_LIMIT failures within FAIL_WINDOW_MS, give up and tell the host
-     * it's fatal (onFailure's third argument), so it can choose another output.
+     * it's fatal (onFailure's third argument), so it can choose another output. Only sources
+     * that never took audio count: one that did worked, so its failure is the audio's (one bad
+     * track the host may restart), not the browser's, and the count starts again.
      */
     _fail(why) {
       if (this.failing || this.dead) return;
       this.failing = true;
       const wasPlaying = this.playing;
       const now = Date.now();
-      this.failTimes = (this.failTimes || []).filter((t) => now - t < FAIL_WINDOW_MS);
-      this.failTimes.push(now);
+      if (this.tookAudio) this.failTimes = [];
+      else {
+        this.failTimes = (this.failTimes || []).filter((t) => now - t < FAIL_WINDOW_MS);
+        this.failTimes.push(now);
+      }
       const fatal = this.failTimes.length >= FAIL_LIMIT;
       this.diag('media', 'failed: ' + why + (fatal ? '; giving up' : '; starting a new media source'));
       this._reset(0);
@@ -195,7 +208,9 @@
     prime() {
       if (this.unlocked || this.unlocking) return;
       this.unlocking = true;
-      const el = this.el;
+      // A tap after the give-up starts a new attempt; the old play() then settles (aborted by the
+      // new src) and must be ignored, or the stream source would be set twice.
+      const el = this.el, attempt = this.unlockAttempt = (this.unlockAttempt || 0) + 1;
       const giveUp = setTimeout(() => { this.unlocking = false; }, UNLOCK_TIMEOUT_MS);   // never stuck
       el.src = SILENT_WAV;
       const after = () => {
@@ -203,7 +218,7 @@
         this.unlocking = false;
         el.pause();
         this.ownPauses = 0;          // changing src discards the pending pause event
-        el.src = this.url;
+        if (el.src !== this.url) el.src = this.url;
         if (this.playing) this._play();
         if (this.onState) this.onState();
       };
@@ -211,12 +226,14 @@
       try { p = el.play(); } catch (e) { p = Promise.reject(e); }
       // Only the browser refusing sound (NotAllowedError) keeps us locked. Any other failure is the
       // clip's, and the tap still counts: browsers allow play() for the page after a gesture.
+      const stale = () => attempt !== this.unlockAttempt || this.unlocked;
       const refused = (e) => {
+        if (stale()) return;
         this.diag('media', `unlock: ${e && e.name}: ${e && e.message}`);
         if (e && e.name === 'NotAllowedError') { clearTimeout(giveUp); this.unlocking = false; return; }
         this.unlocked = true; after();
       };
-      if (p && p.then) p.then(() => { this.unlocked = true; after(); }, refused);
+      if (p && p.then) p.then(() => { if (stale()) return; this.unlocked = true; after(); }, refused);
       else { this.unlocked = true; after(); }
     }
 
@@ -243,6 +260,19 @@
       try { if (!sb.buffered.length) return; from = sb.buffered.start(0); } catch (e) { return; }
       const to = this.el.currentTime - keep;
       if (to - from > 1) (urgent ? this.sbq.pushFront.bind(this.sbq) : this.sbq.push.bind(this.sbq))({ kind: 'remove', from, to });
+    }
+
+    /**
+     * The buffer is full and audio waits. A quota smaller than KEEP_BEHIND_S plus what is ahead
+     * (Chrome holds ~12 MB; hi-res FLAC is over 1 MB/s) would let the playhead reach the end
+     * before anything is old enough to evict, and playback would wait for ever: keep only
+     * FULL_KEEP_S behind, and try the waiting audio again (the browser may have evicted itself).
+     */
+    _makeRoom() {
+      if (!this.sbq.full) return;
+      this.sbq.full = false;
+      this._evict(FULL_KEEP_S, true);
+      this.sbq.run();
     }
 
     /**
@@ -287,7 +317,8 @@
     pauseFor(ms) {
       if (!this.playing) return;
       this._pauseEl();
-      this.timers.push(setTimeout(() => { if (this.playing) this._play(); }, ms));
+      const t = setTimeout(() => { this.timers = this.timers.filter((x) => x !== t); if (this.playing) this._play(); }, ms);
+      this.timers.push(t);   // one per sync correction: gone once it has fired
     }
     skip(ms) { try { this.el.currentTime += ms / 1000; } catch (e) { /* not seekable yet */ } }
     _reset(t) {
@@ -318,7 +349,8 @@
     queuedSeconds() { return Math.max(0, this.writer.end - this.el.currentTime); }
     get underrun() {
       if (!this.playing || !this.unlocked) return false;
-      return this.writer.end - this.el.currentTime < 0.05 && !this.sbq.pendingAppends;
+      // Fragments written, not all pushed: frames still held for the next fragment can't be heard yet.
+      return this.writer.written - this.el.currentTime < 0.05 && !this.sbq.pendingAppends;
     }
     audible() {
       const ct = this.el.currentTime;
@@ -339,6 +371,7 @@
       for (const [t, ev, fn] of this.listeners) t.removeEventListener(ev, fn);
       this._clearTimers(); this._pauseEl();
       this.sbq.detach();
+      try { this.el.removeAttribute('src'); this.el.load(); } catch (e) { /* */ }   // let go of the media source
       if (this.url) URL.revokeObjectURL(this.url);
     }
   }

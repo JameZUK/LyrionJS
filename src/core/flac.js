@@ -222,6 +222,8 @@
               totalSamples: (v[p + 13] & 15) * 4294967296 + be32(v, p + 14),
             };
             this.outBits = this.info.bits;
+            // Frames deeper than 24 bits aren't decoded: fail the track rather than play silence.
+            if (this.info.bits > 24) throw new Error(`FLAC ${this.info.bits}-bit is not supported`);
           }
           this.q.consume(4 + len);
           if (last) { this.state = 'frames'; return 'more'; }

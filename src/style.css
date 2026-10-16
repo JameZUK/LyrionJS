@@ -16,6 +16,10 @@
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; }
+/* iPhone notch and home bar (the page asks for viewport-fit=cover) */
+body { padding: env(safe-area-inset-top, 0) env(safe-area-inset-right, 0) 0 env(safe-area-inset-left, 0); }
+#bar { padding-bottom: env(safe-area-inset-bottom, 0); }
+.sheet-panel { margin-bottom: env(safe-area-inset-bottom, 0); }
 body {
   background: var(--bg); color: var(--fg); font: 15px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, sans-serif;
   display: grid; grid-template-columns: var(--nav) minmax(0, 1fr); grid-template-rows: var(--top) 1fr var(--bar);
@@ -61,7 +65,7 @@ button:disabled { cursor: default; }
 #playerBtn span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #playerBtn .ic { width: 18px; height: 18px; }
 #playerBtn .caret { width: 16px; height: 16px; opacity: .6; }
-.badge { cursor: pointer; font-size: 12px; padding: 3px 9px; border-radius: 999px; background: var(--bg3); color: var(--fg2); white-space: nowrap; max-width: 30vw; overflow: hidden; text-overflow: ellipsis; }
+.badge { cursor: pointer; border: 0; font: inherit; font-size: 12px; padding: 3px 9px; border-radius: 999px; background: var(--bg3); color: var(--fg2); white-space: nowrap; max-width: 30vw; overflow: hidden; text-overflow: ellipsis; }
 .badge.on::before, .badge.warn::before, .badge.off::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
 .badge.on::before { background: var(--ok); } .badge.warn::before { background: var(--warn); } .badge.off::before { background: var(--fg3); }
 

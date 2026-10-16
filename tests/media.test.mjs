@@ -60,6 +60,19 @@ test('a new sample rate starts a new init segment on a continuous timeline', () 
   assert.ok(Math.abs(w.end - 2) < 1 / 48000);
 });
 
+test('a format change without a flush continues after the frames not yet in a fragment', () => {
+  const w = new LJ.Fmp4Writer({ block: 1024, fragmentFrames: 100 });
+  const sec = (r) => [new Float32Array(r), new Float32Array(r)];
+  const a = w.push(44100, sec(44100), 16);
+  assert.equal(a.filter((p) => p.data).length, 0, 'everything still held');
+  assert.ok(Math.abs(w.end - 1) < 1e-9, 'end counts held frames: ' + w.end);
+  const b = [...w.push(48000, sec(48000), 24), ...w.flush()];
+  const frags = b.filter((p) => p.data);
+  assert.ok(Math.abs(frags[0].end - 1) < 1e-9, 'the first format ends at 1 s');
+  assert.ok(Math.abs(frags[1].start - 1) < 1 / 48000, 'the second starts there: ' + frags[1].start);
+  assert.ok(Math.abs(w.end - 2) < 1 / 48000);
+});
+
 test('float to int conversion is exact for decoded integers and clamps the rest', () => {
   const ints = LJ.toInts([new Float32Array([0, -1, 0.5, 32767 / 32768, 1.5, -2])], 16)[0];
   assert.deepEqual(Array.from(ints), [0, -32768, 16384, 32767, 32767, -32768]);

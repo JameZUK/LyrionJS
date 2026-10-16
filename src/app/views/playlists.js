@@ -10,7 +10,10 @@
       }),
     }));
     build();
-    return { title: 'Playlists', el: holder, actions: [btn('save', 'Save queue as playlist', async () => { const n = await prompt2('Save queue as playlist', { placeholder: 'Playlist name', ok: 'Save' }); if (n) { await act(['playlist', 'save', n], 'Saved as ' + n); setTimeout(build, 800); } })] };
+    // Back from a playlist that was renamed or deleted: show the list as it is now.
+    let shown = false;
+    const onShow = () => { if (shown) build(); shown = true; };
+    return { title: 'Playlists', el: holder, onShow, actions: [btn('save', 'Save queue as playlist', async () => { const n = await prompt2('Save queue as playlist', { placeholder: 'Playlist name', ok: 'Save' }); if (n) { await act(['playlist', 'save', n], 'Saved as ' + n); setTimeout(build, 800); } })] };
   };
   function playlistAdmin(pl, after) {
     return [

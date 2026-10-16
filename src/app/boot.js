@@ -7,7 +7,8 @@
   }
 
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') { closeSheet(); return; }   // also while typing in a dialog
+    if (e.key === 'Escape') { closeSheet(); document.body.classList.remove('nav-open'); return; }   // also while typing
+    if (!document.body.classList.contains('ready') || !S.lms) return;   // not before the app has started
     if (e.target.closest('input, textarea, select') || e.ctrlKey || e.metaKey || e.altKey) return;
     if (e.key === ' ') {
       if (e.target.closest('button, [role="button"], a')) return;   // Space activates what has focus
@@ -57,6 +58,9 @@
     renderNav();
     await leaveFrame();
     document.getElementById('menuBtn').onclick = () => document.body.classList.toggle('nav-open');
+    // The menu button says whether the drawer is open, whoever opened or closed it.
+    new MutationObserver(() => document.getElementById('menuBtn').setAttribute('aria-expanded', String(document.body.classList.contains('nav-open'))))
+      .observe(document.body, { attributes: true, attributeFilter: ['class'] });
     document.getElementById('scrim').onclick = () => document.body.classList.remove('nav-open');
     document.getElementById('playerBtn').onclick = () => S.lms && playerPicker();
     document.getElementById('localBadge').onclick = () => renameLocal();

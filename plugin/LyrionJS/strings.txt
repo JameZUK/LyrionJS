@@ -25,6 +25,9 @@ PLUGIN_LYRIONJS_URL
 PLUGIN_LYRIONJS_URL_DESC
 	EN	The address LMS's menus and links open the player at. Leave empty to use this server's name from DNS (or its IP address if it has none). Set it if browsers reach LMS under another name, such as a reverse proxy: the player is one LMS player per browser and address, so keep to one.
 
+PLUGIN_LYRIONJS_URL_BAD
+	EN	The player address must be a plain http:// or https:// address, such as http://music.example.lan:9000. It was not changed.
+
 PLUGIN_LYRIONJS_ENABLED
 	EN	Browser players
 

@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """LyrionJS dev relay: run the page against a real LMS without installing the plugin.
 
-FOR DEVELOPMENT ONLY. It emulates the plugin exactly (docs/ARCHITECTURE.md) so the page has
-one code path, and proxies everything else to the LMS you name:
+FOR DEVELOPMENT ONLY. It follows the plugin's protocol, rules and close codes
+(docs/ARCHITECTURE.md) so the page has one code path, and proxies everything else to the LMS you
+name. Two differences, by design: a page that doesn't take what is sent within SEND_WAIT is
+dropped (the plugin counts writes queued to it), and diagnostics are always printed.
 
   GET  /  and  /plugins/LyrionJS/   the page (lyrionjs.html next to this file, read per request)
   WS   /plugins/LyrionJS/ws         Slimproto byte pipe: hello/resume, HELO MAC check, 10 s hold
@@ -40,6 +42,7 @@ REPLAY_BYTES = 256 * 1024
 MAX_MESSAGE = 64 * 1024
 MAX_SESSIONS = 32
 MAX_SOCKETS = 64
+LOG_PER_MIN = 120
 VERSION = "dev"
 # Close codes, as the plugin's (docs/ARCHITECTURE.md)
 GOING, PROTOCOL, DROPPED, POLICY, TOO_BIG, ERROR, TRY_LATER = 1001, 1002, 1006, 1008, 1009, 1011, 1013
@@ -154,6 +157,11 @@ def origin_allowed(origin, *hosts):
     ohost = _with_port(m.group(2), port).lower()
     return any(ohost == _with_port(h, port).lower()
                for value in hosts if value for h in re.split(r"\s*,\s*", value) if h)
+
+
+def log_safe(text):
+    """Text from a page made safe for one log line, as the plugin does."""
+    return re.sub(r"[\x00-\x1f\x7f\u2028\u2029]+", " ", text)
 
 
 def helo_mac(data):
@@ -273,7 +281,7 @@ class Session:
         self.up_r = self.up_w = None
         self.ws = None
         self.sent, self.buf, self.buf_start = 0, bytearray(), 0
-        self.out, self.mac = bytearray(), None
+        self.out, self.mac, self.got = bytearray(), None, 0
         self.hold_task = self.pump_task = None
 
     def keep(self, data):
@@ -285,7 +293,10 @@ class Session:
             self.buf_start += over
 
     def replay_from(self, received):
-        if not isinstance(received, int) or received > self.sent or received < self.buf_start:
+        # As the plugin: a whole number, also when sent as a string of digits.
+        if isinstance(received, str) and received.isdigit():
+            received = int(received)
+        if isinstance(received, bool) or not isinstance(received, int) or received > self.sent or received < self.buf_start:
             return None
         return bytes(self.buf[received - self.buf_start:])
 
@@ -294,6 +305,7 @@ class Relay:
     def __init__(self, lms_host, lms_port, slim_port=3483, page=PAGE, players=True):
         self.lms_host, self.lms_port, self.slim_port, self.page = lms_host, lms_port, slim_port, page
         self.players = players     # the plugin's "enabled" setting
+        self.log_times = []
         self.sessions = {}
         self.sockets = 0
 
@@ -323,7 +335,7 @@ class Relay:
     async def dispatch(self, req, reader, writer):
         p = req.path
         if p == "/plugins/LyrionJS/ws":
-            if req.header("upgrade").lower() != "websocket" or not req.header("sec-websocket-key"):
+            if req.method != "GET" or req.header("upgrade").lower() != "websocket" or not req.header("sec-websocket-key"):
                 writer.write(plain(400, "WebSocket only"))
                 return True
             if not self.same_origin(req):
@@ -348,11 +360,20 @@ class Relay:
             if not self.same_origin(req):
                 writer.write(plain(403, "Forbidden origin"))
                 return True
+            now = time.monotonic()
+            self.log_times = [t for t in self.log_times if now - t < 60]
+            if len(self.log_times) >= LOG_PER_MIN:
+                writer.write(plain(429, "Too many"))
+                return True
+            self.log_times.append(now)
             try:
                 msg = json.loads(req.body or b"{}")
-                for line in list(msg.get("lines") or [])[:200]:
-                    LOG.info("page [%s] %s", str(msg.get("id", "-"))[:32], str(line)[:600].replace("\n", " "))
-            except (ValueError, AttributeError, TypeError):
+                lines = msg.get("lines") if isinstance(msg, dict) else None
+                if isinstance(lines, list):
+                    who = log_safe(str(msg.get("id", "-"))[:32])
+                    for line in lines[:200]:
+                        LOG.info("page [%s] %s", who, log_safe(str(line)[:600]))
+            except (ValueError, RecursionError):
                 pass
             writer.write(plain(200, "ok"))
             return True
@@ -407,10 +428,15 @@ class Relay:
                 session = await self.new_session(ws)
             else:
                 raise ProtocolError(POLICY)
+            opened = time.monotonic()
             while True:
+                # A session must say which player it is (HELO) within HELLO_WAIT, as in the plugin.
+                wait = IDLE if session.mac else max(0.05, HELLO_WAIT - (time.monotonic() - opened))
                 try:
-                    m = await asyncio.wait_for(ws.recv(), IDLE)
+                    m = await asyncio.wait_for(ws.recv(), wait)
                 except asyncio.TimeoutError:
+                    if not session.mac:
+                        raise ProtocolError(POLICY)
                     LOG.info("session %s: socket silent, dropped", session.id[:8])
                     ws.abort()
                     raise ConnectionError("silent")
@@ -421,8 +447,8 @@ class Relay:
                     await self.to_lms(session, data)
         except ProtocolError as e:
             code = e.code
-        except (json.JSONDecodeError, UnicodeDecodeError):
-            code = POLICY
+        except (ValueError, UnicodeDecodeError, RecursionError, TypeError, AttributeError):
+            code = POLICY                         # not the hello the protocol asks for
         except (asyncio.IncompleteReadError, ConnectionError, OSError):
             code = DROPPED
         finally:
@@ -432,11 +458,14 @@ class Relay:
                 ws.closed = True
             if session is not None and session.ws is ws:
                 session.ws = None
-                if session.id in self.sessions:
+                if code in (POLICY, PROTOCOL, TOO_BIG):
+                    await self.end_session(session, code)   # refused: not held for a resume
+                elif session.id in self.sessions:
                     session.hold_task = asyncio.ensure_future(self.hold(session))
 
     async def to_lms(self, s, data):
         """Whole Slimproto frames only, and every HELO checked, as in the plugin."""
+        s.got += len(data)   # what the page sent, counted for its resume
         s.out += data
         frames = client_frames(s.out)
         if frames is None:
@@ -482,7 +511,10 @@ class Relay:
         return s
 
     async def resume(self, ws, r):
-        s = self.sessions.get(r.get("session") or "")
+        if not self.players:
+            raise ProtocolError(DISABLED)
+        sid = r.get("session")
+        s = self.sessions.get(sid) if isinstance(sid, str) else None
         secret = r.get("secret")
         if not s or not isinstance(secret, str) or not secrets.compare_digest(secret, s.secret) \
                 or s.replay_from(r.get("received")) is None:
@@ -499,7 +531,7 @@ class Relay:
         # sends can land before the replay or be missed by it.
         missed = s.replay_from(r.get("received"))
         ws.write(json.dumps({"session": s.id, "secret": s.secret, "resumed": True, "hold": HOLD,
-                             "replay": len(missed)}).encode(), 0x1)
+                             "replay": len(missed), "got": s.got}).encode(), 0x1)
         if missed:
             ws.write(missed)
         s.ws = ws

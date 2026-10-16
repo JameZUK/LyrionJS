@@ -104,10 +104,12 @@
   }
   function fail(e) { console.error(e); toast(e && e.message ? e.message : String(e), 'err'); }
 
-  // Diagnostics: what the player does goes to the relay's log, so problems on devices without
-  // developer tools (iPad, phones) can be seen. Settings › Send diagnostics turns it off.
+  // Diagnostics: what the player does goes to the LMS log (when the plugin's Diagnostics setting
+  // allows it), so problems on devices without developer tools (iPad, phones) can be seen.
   const diagBuf = [];
-  let serverConfig = {};   // the plugin's settings (config.json), read at boot
+  // The plugin's settings (config.json), read at boot; S.config is the same object. Kept here as
+  // well because this file runs before state.js defines S, and diag() is used from the start.
+  let serverConfig = {};
   function diag(kind, msg) {
     if (!store.get('diag', !!serverConfig.clientDiagnostics)) return;
     diagBuf.push(`${(performance.now() / 1000).toFixed(2)} ${kind}: ${msg}`);

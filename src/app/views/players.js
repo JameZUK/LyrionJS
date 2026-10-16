@@ -6,7 +6,9 @@
 
   VIEWS.players = () => {
     const list = h('div', { class: 'players' });
+    let gen = 0;
     async function render() {
+      const my = ++gen;   // renders overlap (each button re-renders): only the newest is shown
       const rows = await Promise.all(S.players.map(async (p) => {
         let st = {};
         try { st = await S.lms.rpc(p.playerid, ['status', '-', 1, 'tags:al']); } catch (e) { /* offline */ }
@@ -29,6 +31,7 @@
             h('button', { class: 'btn ghost sm', onclick: () => syncMenu(p.playerid, render) }, icon('sync'), 'Sync…'),
             isLocal(p.playerid) ? h('button', { class: 'btn ghost sm', onclick: () => renameLocal().then(render) }, icon('edit'), 'Rename…') : null));
       }));
+      if (my !== gen) return;
       list.replaceChildren(...(rows.length ? rows : [h('div', { class: 'empty', text: 'No players are connected to the server.' })]));
     }
     return { title: 'Players', el: h('div', {}, h('p', { class: 'view-sub', text: 'Every player LMS knows, including this browser. Sync players to play the same music in step.' }), list), onShow: () => { pollPlayers().then(render).catch(fail); }, actions: [btn('refresh', 'Refresh', () => pollPlayers().then(render))] };
@@ -62,22 +65,35 @@
       { label: 'All players', icon: 'speaker', run: () => root('players') },
     ]);
   }
+  const TRANSFER_MAX = 2000;   // tracks moved at most (one request each)
+  let transferring = false;
   function transferMenu() {
     const to = S.target;
     sheet('Move playback to ' + playerName(to) + ' from…', S.players.filter((p) => p.playerid !== to).map((p) => ({
       label: p.name, icon: 'speaker', run: async () => {
-        // Read the queue and position there first: nothing changes here unless there's something to move.
-        const st = await S.lms.rpc(p.playerid, ['status', '-', 1]);
-        const q = await S.lms.rpc(p.playerid, ['status', 0, 2000, 'tags:u']);
-        const urls = (q.playlist_loop || []).map((t) => t.url).filter(Boolean);
-        if (!urls.length) return toast('Nothing to move: ' + p.name + '\'s queue is empty');
-        toast(`Moving ${plural(urls.length, 'track')}…`);
-        await S.lms.rpc(to, ['playlist', 'clear']);
-        for (const u of urls) await S.lms.rpc(to, ['playlist', 'add', u]);
-        await S.lms.rpc(to, ['playlist', 'index', +st.playlist_cur_index || 0]);
-        if (+st.time) await S.lms.rpc(to, ['time', st.time]);
-        await S.lms.rpc(p.playerid, ['pause', 1]);
-        toast('Moved playback to ' + playerName(to)); pollSoon();
+        if (transferring) return toast('Already moving playback…');
+        transferring = true;
+        try {
+          // Read the queue and position there first: nothing changes here unless there's something to move.
+          const st = await S.lms.rpc(p.playerid, ['status', '-', 1]);
+          const q = await S.lms.rpc(p.playerid, ['status', 0, TRANSFER_MAX, 'tags:u']);
+          const loop = q.playlist_loop || [];
+          const cur = +st.playlist_cur_index || 0;
+          const urls = loop.map((t) => t.url).filter(Boolean);
+          if (!urls.length) return toast('Nothing to move: ' + p.name + '\'s queue is empty');
+          // The playing track's place among the tracks that can be moved.
+          const index = loop.slice(0, cur).filter((t) => t.url).length;
+          const cut = +q.playlist_tracks > TRANSFER_MAX;
+          toast(`Moving ${plural(urls.length, 'track')}${cut ? ` (the first ${TRANSFER_MAX})` : ''}…`);
+          await S.lms.rpc(to, ['playlist', 'clear']);
+          for (const u of urls) await S.lms.rpc(to, ['playlist', 'add', u]);
+          await S.lms.rpc(to, ['playlist', 'index', Math.min(index, urls.length - 1)]);
+          if (+st.time) await S.lms.rpc(to, ['time', st.time]);
+          await S.lms.rpc(p.playerid, ['pause', 1]);   // only once the move is complete
+          toast('Moved playback to ' + playerName(to)); pollSoon();
+        } catch (e) {
+          fail(new Error('Moving playback stopped part-way (' + p.name + ' carries on): ' + e.message));
+        } finally { transferring = false; }
       },
     })));
   }

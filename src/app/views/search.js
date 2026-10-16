@@ -26,7 +26,10 @@
         out.push(h('div', { class: 'list' }, row({ art: null, artIcon: 'search', title: `Search apps and services for “${q}”`, sub: 'Everything LMS can search: your library, radio and installed apps',
           onclick: () => push('jive', { action: { cmd: ['globalsearch', 'items'], params: { menu: 'globalsearch', search: q } }, title: 'Search: ' + q }) })));
         results.replaceChildren(...out);
-      } catch (e) { fail(e); }
+      } catch (e) {
+        if (my !== seq) return;   // a newer search is under way
+        results.replaceChildren(h('div', { class: 'empty', text: 'The search failed: ' + (e && e.message || e) }));
+      }
     }
     input.addEventListener('input', debounce(run, 350));
     if (input.value) run();

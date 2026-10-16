@@ -14,19 +14,20 @@
       const mode = h('select', { class: 'select', 'aria-label': 'Audio output' },
         [['auto', 'Automatic'], ['webaudio', 'Web Audio (lowest latency)'], ['media', 'Media element (plays with the screen locked)']]
           .map(([v, t]) => h('option', { value: v, text: t, selected: store.get('outputMode', (S.config && S.config.defaultOutput) || 'auto') === v })));
-      mode.addEventListener('change', () => { store.set('outputMode', mode.value); toast('Reloading to switch the output…'); setTimeout(() => location.reload(), 800); });
+      // A choice made here is tried afresh, even where the media element failed before.
+      mode.addEventListener('change', () => { store.set('outputMode', mode.value); store.set('mediaUnusable', false); toast('Reloading to switch the output…'); setTimeout(() => location.reload(), 800); });
       sections.push(h('section', {}, h('h3', { text: 'This browser as a player' }),
         h('label', { class: 'setting' }, h('span', { text: 'Play music in this browser (a real Slimproto player in LMS)' }), sw),
         S.local ? h('div', { class: 'kv' },
           kv('Name', S.local.name, h('button', { class: 'btn ghost sm', onclick: () => renameLocal().then(render) }, 'Rename')),
-          kv('Player ID', S.localId), kv('Connection', snap.connected ? 'Connected (Slimproto via relay)' : 'Connecting…'),
+          kv('Player ID', S.localId), kv('Connection', snap.connected ? 'Connected (Slimproto over a WebSocket to LMS)' : 'Connecting…'),
           kv('State', snap.state + (snap.error ? ' — ' + snap.error : '')),
           kv('Audio engine', S.output ? (S.output.engine || 'Web Audio (opens when music starts)') + (S.outputMode === 'webaudio' && !window.isSecureContext ? ' (plain http page)' : '') : '—'),
           kv('Why', S.outputWhy || ''),
           S.output && S.output.volumeLocked ? kv('Volume', 'Set with this device\'s own buttons (the page can\'t set it here); LMS volume is held at 100 %') : null,
           kv('Formats', S.local.caps.map((c) => ({ flc: 'FLAC', pcm: 'PCM/WAV/AIFF', mp3: 'MP3' }[c] || c)).join(', ') + ' (LMS converts everything else to FLAC)'),
           kv('Highest sample rate', (S.local.maxRateFound / 1000) + ' kHz'),
-          kv('Output', out ? `${out.rate / 1000} kHz Web Audio, ${out.state}, ~${out.latency} ms latency` : 'Opens when music starts'),
+          kv('Output', out ? `${out.rate / 1000} kHz, ${out.state}, ~${out.latency} ms latency` : 'Opens when music starts'),
           kv('Buffered', snap.queued.toFixed(1) + ' s decoded ahead'),
           S.output && !S.output.volumeLocked ? h('label', { class: 'setting' }, h('span', { text: 'Output level in this browser (on top of the LMS volume)' }), trim) : null,
           h('label', { class: 'setting' }, h('span', { text: 'Audio output' }), mode)) : null));

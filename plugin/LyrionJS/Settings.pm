@@ -26,9 +26,15 @@ sub handler {
 	if ($params->{saveSettings}) {
 		my $u = $params->{pref_pageUrl} // '';
 		$u =~ s/^\s+|\s+$//g;
-		$u = '' unless $u =~ m{^https?://[^\s/?#]+(?:/[^\s?#]*)?$};
-		$params->{pref_pageUrl} = $u;
-		$prefs->set('pageUrl', $u);   # so the address shown below is already the new one
+		if (Plugins::LyrionJS::Plugin::validPageUrl($u)) {
+			$params->{pref_pageUrl} = $u;
+			$prefs->set('pageUrl', $u);   # so the address shown below is already the new one
+		}
+		else {
+			# Keep what was set, and say why.
+			$params->{pref_pageUrl} = $prefs->get('pageUrl');
+			$params->{warning} .= Slim::Utils::Strings::string('PLUGIN_LYRIONJS_URL_BAD') . ' ';
+		}
 	}
 	for my $p (qw(enabled proxyStreams clientDiagnostics)) {
 		$params->{"pref_$p"} = $params->{"pref_$p"} ? 1 : 0 if $params->{saveSettings};

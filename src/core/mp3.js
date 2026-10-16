@@ -78,7 +78,8 @@
       if (tag !== 'Xing' && tag !== 'Info') return false;
       const flags = be32(frame, x + 4);
       let o = x + 8; if (flags & 1) o += 4; if (flags & 2) o += 4; if (flags & 4) o += 100; if (flags & 8) o += 4;
-      if (o + 24 <= frame.length && latin1(frame.subarray(o, o + 4)) === 'LAME') {
+      // LAME writes its delay and padding here; FFmpeg writes the same block as 'Lavf' or 'Lavc'.
+      if (o + 24 <= frame.length && /^(LAME|Lavf|Lavc)$/.test(latin1(frame.subarray(o, o + 4)))) {
         const d = frame.subarray(o + 21, o + 24);
         this.delay = (d[0] << 4) | (d[1] >> 4); this.padding = ((d[1] & 15) << 8) | d[2];
       }
@@ -137,6 +138,7 @@
           const n = ad.numberOfFrames, ch = Math.min(ad.numberOfChannels, 2), chans = [];
           for (let c = 0; c < ch; c++) { const a = new Float32Array(n); ad.copyTo(a, { planeIndex: c, format: 'f32-planar' }); chans.push(a); }
           this.outQ.push({ rate: ad.sampleRate, chans }); ad.close();
+          this.errors = 0;   // only failures in a row count
           this._wake();
         },
         // A corrupt frame closes the decoder; pump() opens a new one and carries on.
@@ -163,6 +165,7 @@
       if (this.finished || this.aborted) return 'done';
       if (this.failed) {
         this.failed = null; this.dec = null; this.busy = null;
+        // 21 failures in a row: this stream can't be decoded.
         if (this.errors > 20) { this.finished = true; if (this.onError) this.onError('MP3 decoding failed'); return 'done'; }
       }
       this._drainOut();

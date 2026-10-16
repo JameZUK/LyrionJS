@@ -1,4 +1,15 @@
   // ---------------------------------------------------------------------------
+  /** A volume slider for the controlled player. It follows LMS, except just after a touch. */
+  function volumeSlider() {
+    const vol = h('input', { type: 'range', min: 0, max: 100, step: 1, class: 'vol', 'aria-label': 'Volume' });
+    const send = debounce(() => act(['mixer', 'volume', vol.value]), 120);
+    const touch = () => { vol.touchedAt = performance.now(); };
+    vol.addEventListener('pointerdown', touch);
+    vol.addEventListener('input', () => { touch(); send(); });
+    return vol;
+  }
+  const showVolume = (vol, v) => { if (!(performance.now() - (vol.touchedAt || -1e9) < 1500)) vol.value = v; };
+
   // Views
   // ---------------------------------------------------------------------------
   let npEls = null;
@@ -12,14 +23,13 @@
     const tNow = h('span', { class: 'tm' }), tDur = h('span', { class: 'tm' });
     const playBtn = btn('play', 'Play', () => togglePlay(), 'big');
     const shuf = btn('shuffle', 'Shuffle', () => cycleShuffle()), rep = btn('repeat', 'Repeat', () => cycleRepeat());
-    const vol = h('input', { type: 'range', min: 0, max: 100, step: 1, class: 'vol', 'aria-label': 'Volume' });
+    const vol = volumeSlider();
     const muteBtn = btn('volume', 'Mute', () => act(['mixer', 'muting', 'toggle']));
     const upNext = h('div', { class: 'np-next' });
     const empty = h('div', { class: 'np-empty' }, icon('note', 'huge'), h('p', { text: 'Nothing playing. Pick something from the library, favourites, radio or apps.' }));
     let seeking = false;
     seek.addEventListener('input', () => { seeking = true; tNow.textContent = fmtTime(seek.value); });
     seek.addEventListener('change', () => { seeking = false; act(['time', seek.value]); });
-    vol.addEventListener('input', debounce(() => act(['mixer', 'volume', vol.value]), 120));
     artist.addEventListener('click', () => { const c = current(); if (c && c.artistId) push('artist', { id: c.artistId, name: c.artist }); });
     album.addEventListener('click', () => { const c = current(); if (c && c.albumId) push('album', { id: c.albumId, title: c.album, artist: c.artist, artist_id: c.artistId }); });
     const main = h('div', { class: 'np' },
@@ -92,7 +102,7 @@
     npEls.shuf.classList.toggle('on', sh > 0); npEls.shuf.title = SHUFFLE[sh];
     npEls.rep.classList.toggle('on', rp > 0); setIcon(npEls.rep, rp === 1 ? 'repeat1' : 'repeat', REPEAT[rp]);
     const v = Math.abs(+st['mixer volume'] || 0), muted = (+st['mixer volume'] || 0) < 0;
-    if (document.activeElement !== npEls.vol) npEls.vol.value = v;
+    showVolume(npEls.vol, v);
     setIcon(npEls.muteBtn, muted ? 'mute' : 'volume', muted ? 'Unmute' : 'Mute');
     const idx = +st.playlist_cur_index, total = +st.playlist_tracks || 0;
     npEls.upNext.textContent = total ? `Track ${idx + 1} of ${total}` : '';
@@ -112,7 +122,7 @@
     els.prog.style.width = d ? Math.min(100, t / d * 100) + '%' : '0%';
     els.time.textContent = has ? (d ? `${fmtTime(t)} / ${fmtTime(d)}` : fmtTime(t)) : '';
     const v = Math.abs(+(st && st['mixer volume']) || 0);
-    if (document.activeElement !== els.vol) els.vol.value = v;
+    showVolume(els.vol, v);
   }
   function buildBar(bar) {
     const art = h('div', { class: 'bar-art' });
@@ -120,8 +130,7 @@
     const play = btn('play', 'Play', () => togglePlay(), 'mid');
     const prog = h('div', { class: 'bar-prog-fill' });
     const time = h('div', { class: 'bar-time' });
-    const vol = h('input', { type: 'range', min: 0, max: 100, step: 1, class: 'vol', 'aria-label': 'Volume' });
-    vol.addEventListener('input', debounce(() => act(['mixer', 'volume', vol.value]), 120));
+    const vol = volumeSlider();
     const progBar = h('div', { class: 'bar-prog', title: 'Seek' }, prog);
     progBar.addEventListener('click', (e) => {
       const c = current(); if (!c || !c.duration) return;

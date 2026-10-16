@@ -58,7 +58,10 @@ def logo():
     svg = re.sub(r">\s+<", "><", svg).strip()
     inner = re.search(r"<svg[^>]*>(.*)</svg>", svg, re.S).group(1)
     view = re.search(r'viewBox="([^"]+)"', svg).group(1)
-    inner_ids = inner.replace('id="bg"', 'id="lj-logo-bg"').replace("url(#bg)", "url(#lj-logo-bg)")
+    # The symbol shares the page's id space: give every id in the logo our prefix.
+    inner_ids = re.sub(r'\bid="([^"]+)"', r'id="lj-logo-\1"', inner)
+    inner_ids = re.sub(r"url\(#([^)]+)\)", r"url(#lj-logo-\1)", inner_ids)
+    inner_ids = re.sub(r'href="#([^"]+)"', r'href="#lj-logo-\1"', inner_ids)
     symbol = (f'<svg width="0" height="0" style="position:absolute" aria-hidden="true">'
               f'<symbol id="lj-logo" viewBox="{view}">{inner_ids}</symbol></svg>')
     uri = "data:image/svg+xml," + quote(svg, safe=" =:/;,'()")
@@ -70,7 +73,7 @@ def page():
            f"  const VERSION = '{read_version()}';\n" + script(APP) + "\n})();")
     out = read("index.html")
     symbol, uri = logo()
-    out = out.replace("@@LOGO_URI@@", uri.replace('"', "%22"))
+    out = out.replace("@@LOGO_URI@@", uri)   # quote() leaves no " to end the attribute
     for key, text in {"CSS": read("style.css"), "LOGO": symbol, "WORKLET": script(WORKLET), "LIB": script(LIB), "APP": app}.items():
         marker = f"/*@@{key}@@*/"
         if marker not in out:
@@ -105,16 +108,20 @@ def package(url):
     os.makedirs(dist, exist_ok=True)
     zpath = os.path.join(dist, f"LyrionJS-{version}.zip")
     with zipfile.ZipFile(zpath, "w", zipfile.ZIP_DEFLATED) as z:
-        for root, _, files in sorted(os.walk(plugin)):
+        for root, dirs, files in sorted(os.walk(plugin)):
+            dirs[:] = sorted(d for d in dirs if not d.startswith("."))
             for name in sorted(files):
+                if name.startswith(".") or name.endswith(("~", ".swp", ".bak", ".orig")):
+                    continue   # editor and system leftovers
                 full = os.path.join(root, name)
                 info = zipfile.ZipInfo(os.path.relpath(full, plugin), date_time=(2026, 1, 1, 0, 0, 0))
                 info.compress_type = zipfile.ZIP_DEFLATED
+                info.external_attr = 0o644 << 16   # readable by the LMS user, whoever unpacks it
                 with open(full, "rb") as f:
                     z.writestr(info, f.read())   # fixed timestamps: the same files give the same zip
     with open(zpath, "rb") as f:
         sha = hashlib.sha1(f.read()).hexdigest()
-    zurl = (url.rstrip("/") + "/" if url else "") + os.path.basename(zpath)
+    zurl = url.rstrip("/") + "/" + os.path.basename(zpath)
     repo = f"""<?xml version="1.0" encoding="UTF-8"?>
 <extensions>
 	<details>
@@ -153,6 +160,8 @@ def main():
     if args.icons:
         icons()
     if args.package:
+        if not args.url:
+            sys.exit("--package needs --url: repo.xml must say where LMS can download the zip from")
         package(args.url)
 
 

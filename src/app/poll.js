@@ -3,6 +3,7 @@
   // ---------------------------------------------------------------------------
   const STATUS_TAGS = 'tags:aAlcdejJKNoqrstuyITRx';
   let pollTimer = null, pollCount = 0, polling = false, pollAgain = false;
+  let localStatusFor = null;   // the local player's state when S.localStatus was fetched
 
   /** Poll soon. Only one poll runs at a time; a request made during one runs right after it. */
   function pollSoon(ms = 250) {
@@ -26,9 +27,15 @@
         }
       }
       if (pollCount++ % 5 === 0) await pollPlayers();
-      if (S.local && S.local.state === 'playing' && !isLocal(S.target) && pollCount % 3 === 0) {
-        S.localStatus = await S.lms.rpc(S.localId, ['status', '-', 1, STATUS_TAGS]);
-      } else if (isLocal(S.target)) S.localStatus = S.status;
+      // This browser's own status (the lock screen shows it) while another player is controlled:
+      // now and then while it plays, and whenever its state changed (paused, stopped…).
+      if (S.local && !isLocal(S.target)) {
+        const state = S.local.state;
+        if ((state === 'playing' && pollCount % 3 === 0) || state !== localStatusFor) {
+          S.localStatus = await S.lms.rpc(S.localId, ['status', '-', 1, STATUS_TAGS]);
+          localStatusFor = state;
+        }
+      } else if (isLocal(S.target)) { S.localStatus = S.status; localStatusFor = null; }
       updateMediaSession();
       setConn(true);
     } catch (e) {

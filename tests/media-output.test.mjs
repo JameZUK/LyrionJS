@@ -69,10 +69,12 @@ function fakeEnv(opts = {}) {
   globalThis.URL.revokeObjectURL = () => {};
   globalThis.performance = globalThis.performance || { now: () => Date.now() };
   const el = {
-    listeners: {}, paused: true, currentTime: 0, _src: '', played: [],
+    listeners: {}, paused: true, currentTime: 0, _src: '', played: [], srcs: [], loads: 0,
     addEventListener(ev, fn) { (this.listeners[ev] = this.listeners[ev] || []).push(fn); },
     removeEventListener() {},
-    set src(v) { this._src = v; if (env.lastMs && String(v).startsWith('blob:')) env.lastMs._open(); },
+    set src(v) { this._src = v; this.srcs.push(String(v)); if (env.lastMs && String(v).startsWith('blob:')) env.lastMs._open(); },
+    removeAttribute(n) { if (n === 'src') this._src = ''; },
+    load() { this.loads++; },
     get src() { return this._src; },
     play() { if (opts.play) return opts.play(this); this.paused = false; return Promise.resolve(); },
     pause() { if (!this.paused) { this.paused = true; env.tasks.push(() => { for (const f of this.listeners.pause || []) f(); }); } },
@@ -204,4 +206,89 @@ test('a media source the browser keeps refusing is given up, not reopened for ev
   assert.equal(told, 3);
   assert.ok(env.sources <= 4, 'stopped opening sources: ' + env.sources);
   o.dispose();
+});
+
+// --- review fixes (v0.2) ---------------------------------------------------------
+const lastEnd = (sb) => sb.buffered.end(sb.buffered.length - 1);
+
+test('hi-res with a quota under 12 s: a full buffer with the playhead at its end is evicted, not waited on for ever', async (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'setTimeout'] });
+  const env = fakeEnv(); const o = await ready(env);
+  env.quota = 8;                                   // less than the 10 s kept behind the playhead
+  o.play();
+  for (let i = 0; i < 20; i++) o.push(1, 44100, sec(44100, 1), 16);
+  o.endSeq(1); env.run();
+  assert.ok(o.sbq.full && o.sbq.pendingAppends, 'audio waits while the buffer is full');
+  const sb = env.sbs[0];
+  // The element plays up to the end of what is buffered and waits there; only the timer runs.
+  // (Not an underrun: with every track decoded the player would take that for the end, STMu.)
+  for (let k = 0; k < 20 && o.sbq.pendingAppends; k++) { env.el.currentTime = lastEnd(sb); t.mock.timers.tick(5000); env.run(); }
+  assert.ok(!o.sbq.pendingAppends, 'everything appended in the end');
+  assert.ok(Math.abs(lastEnd(sb) - 20) < 0.01, 'buffered to ' + lastEnd(sb));
+  o.dispose();
+});
+
+test('a full buffer is evicted as soon as the element waits', async () => {
+  const env = fakeEnv(); const o = await ready(env);
+  env.quota = 8;
+  o.play();
+  for (let i = 0; i < 12; i++) o.push(1, 44100, sec(44100, 1), 16);
+  o.endSeq(1); env.run();
+  assert.ok(o.sbq.full);
+  const sb = env.sbs[0];
+  env.el.currentTime = lastEnd(sb); env.el.fire('waiting'); env.run();
+  assert.ok(sb.log.some((x) => x[0] === 'remove'), 'a remove ran');
+  assert.ok(lastEnd(sb) > 8.5, 'more audio went in: ' + lastEnd(sb));
+  o.dispose();
+});
+
+test('a source that took audio and then failed does not count toward giving up', async () => {
+  const env = fakeEnv(); const o = await ready(env);
+  let fatal = 0, told = 0; o.onFailure = (why, playing, isFatal) => { told++; if (isFatal) fatal++; };
+  for (let i = 0; i < 5; i++) { o.push(1, 44100, sec(44100, 2), 16); o.endSeq(1); env.run(); env.el.fire('error'); env.run(); }
+  assert.equal(told, 5); assert.equal(fatal, 0, 'each fresh source took audio');
+  // Fresh sources that never take audio still count.
+  for (let i = 0; i < 3; i++) { env.el.fire('error'); env.run(); }
+  assert.equal(fatal, 1, 'three failures without audio are fatal');
+  o.dispose();
+});
+
+test('a second tap while the first unlock is still pending sets the stream source once', async (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'setTimeout'] });
+  const pend = [];
+  const env = fakeEnv({ play: () => new Promise((res, rej) => pend.push({ res, rej })) });
+  const o = new LJ.MediaOutput(env.el);
+  o.unlock();                                      // tap 1: play() never settles…
+  t.mock.timers.tick(2600);                        // …so the unlock gives up waiting
+  o.unlock();                                      // tap 2
+  pend[0].rej(Object.assign(new Error('interrupted by a new load'), { name: 'AbortError' }));
+  pend[1].res();
+  for (let i = 0; i < 5; i++) await Promise.resolve();
+  env.run();
+  assert.equal(o.needsGesture, false);
+  assert.equal(env.el.srcs.filter((s) => s.startsWith('blob:')).length, 1, 'stream source set once: ' + env.el.srcs);
+  assert.equal(env.sbs.length, 1);
+  o.dispose();
+});
+
+test('sync corrections do not pile up timers', async (t) => {
+  t.mock.timers.enable({ apis: ['setInterval', 'setTimeout'] });
+  const env = fakeEnv(); const o = await ready(env);
+  o.play();
+  for (let i = 0; i < 10; i++) { o.pauseFor(10); t.mock.timers.tick(20); }
+  assert.equal(o.timers.length, 0);
+  o.dispose();
+});
+
+test('the self test resolves false when the browser throws', async () => {
+  fakeEnv();
+  globalThis.document = { createElement: () => ({ removeAttribute() {}, load() {} }) };
+  globalThis.URL.createObjectURL = () => { throw new Error('no blob URLs'); };
+  try { assert.equal(await LJ.selfTest(), false); } finally { delete globalThis.document; }
+});
+
+test('dispose detaches the element from the media source', async () => {
+  const env = fakeEnv(); const o = await ready(env);
+  o.dispose();
+  assert.equal(env.el.src, ''); assert.equal(env.el.loads, 1);
 });

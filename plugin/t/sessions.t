@@ -49,8 +49,10 @@ our %pages;         # raw handlers
 	sub info {} sub is_info { 0 }
 
 	package FakePrefs;
-	sub new { my ($c, %p) = @_; bless {%p}, $c }
-	sub get { $_[0]{$_[1]} }
+	sub new { my ($c, %p) = @_; bless { p => {%p}, change => {} }, $c }
+	sub get { $_[0]{p}{$_[1]} }
+	sub set { my ($s, $k, $v) = @_; $s->{p}{$k} = $v; $_->($k, $v) for @{ $s->{change}{$k} || [] } }
+	sub setChange { my ($s, $f, @k) = @_; push @{ $s->{change}{$_} }, $f for @k }
 }
 
 use Plugins::LyrionJS::Bridge;
@@ -238,10 +240,56 @@ ok(!$p->{sock}{open}, 'and the socket is closed');
 
 # --- switched off ---------------------------------------------------------------------------------
 {
-	$prefs->{enabled} = 0;
+	$prefs->set(enabled => 0);
 	my $q = page(); say($q, 1, '{"hello":1}');
 	is(closeCode(frames($q->{sock})), 4403, 'players off: 4403');
-	$prefs->{enabled} = 1;
+	$prefs->set(enabled => 1);
+}
+
+# --- second review: limits, policy closes, switching off, what arrived -----------------------------
+{
+	# Pings from a page that never reads: closed, not queued without limit; pings aren't activity.
+	my $q = page();
+	$q->{sock}{queued} = 100;
+	say($q, 9, 'x');
+	ok(!$q->{sock}{open}, 'a ping to a page far behind closes it');
+	my $r = page(); say($r, 1, '{"hello":1}'); frames($r->{sock});
+	advance(4); say($r, 9, 'p'); advance(4); say($r, 9, 'p'); advance(4); say($r, 9, 'p'); advance(5);
+	is(closeCode(frames($r->{sock})), 1008, 'a session that only pings and never sends HELO is closed');
+
+	# A policy close ends the session: it can't be resumed.
+	my ($x, $hx) = hello();
+	say($x, 2, helo([0, 4, 0x20, 1, 2, 3]));
+	is(closeCode(frames($x->{sock})), 1008, 'hardware MAC refused');
+	my $back = page();
+	say($back, 1, '{"resume":{"session":"' . $hx->{session} . '","secret":"' . $hx->{secret} . '","received":0}}');
+	is(closeCode(frames($back->{sock})), 4404, 'and that session is gone');
+
+	# The resume says how much of what the page sent arrived.
+	my ($g, $hg) = hello(); say($g, 2, helo([2, 0x4c, 0x4a, 0, 1, 1])); say($g, 2, 'STAT' . pack('N', 0));
+	my $sent = length(helo([2, 0x4c, 0x4a, 0, 1, 1])) + 8;
+	Plugins::LyrionJS::Bridge::_closeConn($g->{c}, 1006);
+	my $g2 = page();
+	say($g2, 1, '{"resume":{"session":"' . $hg->{session} . '","secret":"' . $hg->{secret} . '","received":0}}');
+	my ($ans) = frames($g2->{sock});
+	is(Plugins::LyrionJS::JSON::decode($ans->[1])->{got}, $sent, 'resume reports the bytes that arrived');
+
+	# Switching browser players off ends the sessions there are, and refuses resumes.
+	my ($d, $hd) = hello(); say($d, 2, helo([2, 0x4c, 0x4a, 0, 1, 2]));
+	Plugins::LyrionJS::Bridge::_closeConn($d->{c}, 1006);
+	my ($e) = hello(); say($e, 2, helo([2, 0x4c, 0x4a, 0, 1, 3]));
+	$prefs->set(enabled => 0);
+	is(closeCode(frames($e->{sock})), 4403, 'players switched off: open sessions end with 4403');
+	my $d2 = page();
+	say($d2, 1, '{"resume":{"session":"' . $hd->{session} . '","secret":"x","received":0}}');
+	is(closeCode(frames($d2->{sock})), 4403, 'and resumes are refused');
+	$prefs->set(enabled => 1);
+
+	# A resume with a session that isn't a string is refused, not a crash.
+	my $bad = page(); say($bad, 1, '{"resume":{"session":["a"],"secret":"x","received":0}}');
+	is(closeCode(frames($bad->{sock})), 4404, 'malformed resume refused');
+
+	is(Plugins::LyrionJS::Bridge::logSafe("a\nb\x1b[31mc\x{2028}d"), 'a b [31mc d', 'log text has no control characters');
 }
 
 # --- shutdown ---------------------------------------------------------------------------------------

@@ -1,5 +1,5 @@
   // ---------------------------------------------------------------------------
-  // LMS JSON-RPC (through the relay's proxy, so same-origin)
+  // LMS JSON-RPC, same-origin (the page is served by LMS, or by the dev relay that proxies it)
   // ---------------------------------------------------------------------------
   class LMS {
     constructor() { this.base = '/'; }
@@ -26,8 +26,9 @@
       // Images from other hosts go through LMS's image proxy: the page never loads them itself.
       if (/^https?:\/\//i.test(src)) return this.base + 'imageproxy/' + encodeURIComponent(src) + `/image_${size}x${size}_f`;
       if (/^[a-z][a-z0-9+.-]*:/i.test(src)) return null;   // data:, javascript: and the like
-      src = src.replace(/^\/+/, '');
+      src = src.replace(/^[\\/\s]+/, '');   // a path on this server, however it starts
       if (/^music\/[^/]+\/cover$/.test(src)) src += `_${size}x${size}_f`;
+      try { if (new URL(this.base + src, location.href).origin !== location.origin) return null; } catch (e) { return null; }
       return this.base + src;
     }
     cover(id, size = 300) { return id == null || id === '' ? null : this.base + `music/${encodeURIComponent(id)}/cover_${size}x${size}_f`; }

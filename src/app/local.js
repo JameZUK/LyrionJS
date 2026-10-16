@@ -11,10 +11,11 @@
   async function chooseOutput() {
     const want = store.get('outputMode', (S.config && S.config.defaultOutput) || 'auto');
     const ua = navigator.userAgent;
-    const ios = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+    const ios = isIOS();
     const mobile = ios || /Android/.test(ua);
     let mode = 'webaudio', why = 'desktop browser';
     if (want === 'webaudio') why = 'chosen in Settings';
+    else if (want !== 'media' && store.get('mediaUnusable', false)) why = 'the media element failed here before';
     else if (want === 'media' || mobile) {
       const ok = LJ.mediaSupported() && await LJ.selfTest();
       if (ok) { mode = 'media'; why = want === 'media' ? 'chosen in Settings' : (ios ? 'iPhone/iPad' : 'Android') + ': keeps playing with the screen locked'; }
@@ -34,17 +35,25 @@
       level: store.get('localLevel', store.get('localTrim', 1)), preferRate: store.get('outRate', 44100),
       onRate: (r) => store.set('outRate', r),
       // iPhone and iPad start a second audio context only inside a tap.
-      singleContext: /iPhone|iPad|iPod/.test(navigator.userAgent) || (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1),
+      singleContext: isIOS(),
     });
   }
 
-  async function startLocalPlayer() {
-    if (S.local || !S.server) return;
-    if (!store.get('localEnabled', true)) return;
+  /** Starts this browser's player; a start already under way is shared, not repeated. */
+  let starting = null;
+  function startLocalPlayer() {
+    if (!starting) starting = startNow().catch(fail).finally(() => { starting = null; });
+    return starting;
+  }
+
+  async function startNow() {
+    const wanted = () => !S.local && S.server && store.get('localEnabled', true);
+    if (!wanted()) return;
     const mac = macBytes();
     S.localId = mac.str;
     if (!S.output) S.output = await chooseOutput();
     const [maxRate, mp3] = await Promise.all([S.outputMode === 'media' ? Promise.resolve(192000) : LJ.detectMaxRate(), detectMp3()]);
+    if (!wanted()) return;   // switched off (or started) while the checks ran
     const caps = ['flc', 'pcm'].concat(mp3 ? ['mp3'] : []);
     const uuid = new Uint8Array(16); uuid.set(mac.bytes, 0);
     // Earlier versions named iPads "… on macOS" (iPadOS Safari reports a Mac).
@@ -67,6 +76,13 @@
     p.maxRateFound = maxRate;
     p.on((what) => {
       if (what === 'name') store.set('name', p.name);
+      // The plugin ended this player: another session took it, or browser players were switched off.
+      if (what === 'replaced' || what === 'disabled') {
+        toast(what === 'replaced' ? 'This player was taken over by another session; this page is now a remote control.'
+          : 'Browser players are switched off in LMS (Settings › Plugins › LyrionJS); this page is now a remote control.');
+        if (S.local === p) stopLocalPlayer();
+        return;
+      }
       if (what === 'state' || what === 'track' || what === 'connected') { pollSoon(150); refreshUnlock(); }
       if (what === 'connected') {
         setTimeout(pollPlayers, 400);
@@ -81,11 +97,14 @@
     S.output.onState = refreshUnlock;
     // The media element failed and was replaced (output/media.js): what was queued is lost, so
     // start the current track again where it was.
+    let lastRecovery = { index: -1, at: -1e9 };
     S.output.onFailure = async (why, wasPlaying, fatal) => {
       if (fatal) {
-        // The media element can't play here after all: use Web Audio from now on, in this browser.
-        diag('media', 'media element unusable (' + why + '): switching this browser to Web Audio');
-        store.set('outputMode', 'webaudio');
+        diag('media', 'media element unusable: ' + why);
+        // Chosen in Settings: say so, and leave the choice to the person.
+        if (store.get('outputMode', 'auto') === 'media') { fail(new Error('The media element can\'t play here: choose Web Audio in Settings › Audio output.')); return; }
+        // Automatic: this browser uses Web Audio from now on (Settings can still choose either).
+        store.set('mediaUnusable', true);
         toast('This browser can\'t play through the media element: switching to Web Audio…');
         setTimeout(() => location.reload(), 1500);
         return;
@@ -94,7 +113,16 @@
       if (!wasPlaying) return;
       try {
         const st = await S.lms.rpc(S.localId, ['status', '-', 1]);
-        await S.lms.rpc(S.localId, ['playlist', 'index', +st.playlist_cur_index || 0]);
+        const index = +st.playlist_cur_index || 0;
+        // The same track failing again at once: it's the track, so go on to the next one.
+        if (index === lastRecovery.index && performance.now() - lastRecovery.at < 30000) {
+          diag('media', 'track ' + index + ' fails again: skipping it');
+          lastRecovery = { index: -1, at: -1e9 };
+          await S.lms.rpc(S.localId, ['playlist', 'index', '+1']);
+          return;
+        }
+        lastRecovery = { index, at: performance.now() };
+        await S.lms.rpc(S.localId, ['playlist', 'index', index]);
         if (+st.time > 1) await S.lms.rpc(S.localId, ['time', st.time]);
       } catch (e) { diag('error', 'recovery: ' + e.message); }
     };
@@ -119,6 +147,7 @@
     if (!S.local) return;
     S.local.stop(); S.local = null;
     if (S.localCleanup) { S.localCleanup(); S.localCleanup = null; }
+    clearMediaSession();
     renderLocalBadge();
   }
 
@@ -154,7 +183,7 @@
       ? { value: '', placeholder: 'e.g. Kitchen tablet', ok: 'Save', hint: 'How this browser shows in LMS and your other controllers. Change it any time in Settings.' }
       : { value: S.local.name, placeholder: 'e.g. Kitchen tablet', ok: 'Save' });
     store.set('named', true);   // asked once: never ask again by ourselves
-    if (!n || n === S.local.name) return;
+    if (!S.local || !n || n === S.local.name) return;   // (the player may have been switched off meanwhile)
     const name = n.slice(0, 48);
     try { await S.lms.rpc(S.localId, ['name', name]); } catch (e) { fail(e); return; }
     S.local.name = name; store.set('name', name);
@@ -173,14 +202,18 @@
     const known = S.players.find((x) => x.playerid === S.localId);
     const name = known ? known.name : S.local.name;
     if (name !== defaultName()) { store.set('named', true); return; }   // already named (perhaps in another controller)
-    if (document.getElementById('sheet').hidden) renameLocal(true);
+    // Not over a dialog, nor while the person is typing somewhere (the prompt would take the keys).
+    const busy = !document.getElementById('sheet').hidden || (document.activeElement && document.activeElement.matches('input, textarea, select'));
+    if (!busy) renameLocal(true).catch(fail);
+    else askedName = false;   // try again when they next connect
   }
 
   function renderLocalBadge() {
     const el = document.getElementById('localBadge');
     if (!el) return;
     el.textContent = '';
-    if (!S.local) { el.append('Browser player off'); el.className = 'badge off'; return; }
+    if (!S.local) { el.append('Browser player off'); el.className = 'badge off'; el.title = ''; el.disabled = true; return; }
+    el.disabled = false;
     const snap = S.local.snapshot();
     el.className = 'badge ' + (snap.connected ? 'on' : 'warn');
     el.append(snap.connected ? `${S.local.name} · ${snap.state}` : 'Connecting to LMS…');
@@ -205,6 +238,17 @@
   // Media Session (lock screen / media keys) for this browser's player
   // ---------------------------------------------------------------------------
   let lastMeta = '';
+  /** The lock screen no longer shows this browser as playing, nor sends it commands. */
+  function clearMediaSession() {
+    lastMeta = null;
+    if (!('mediaSession' in navigator)) return;
+    navigator.mediaSession.metadata = null;
+    navigator.mediaSession.playbackState = 'none';
+    for (const a of ['play', 'pause', 'nexttrack', 'previoustrack', 'stop', 'seekto']) {
+      try { navigator.mediaSession.setActionHandler(a, null); } catch (e) { /* unsupported action */ }
+    }
+  }
+
   function updateMediaSession() {
     if (!('mediaSession' in navigator) || !S.local) return;
     const st = S.localStatus; if (!st) return;
