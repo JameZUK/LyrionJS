@@ -30,7 +30,7 @@ It adds a new way to play and changes nothing else about LMS.
 
 ## Install
 
-1. Unzip `dist/LyrionJS-<version>.zip (made by `python3 build.py --package`)` into a `LyrionJS` folder in LMS's **manual** plugin folder
+1. Unzip `dist/LyrionJS-<version>.zip` (made by `python3 build.py --package`) into a `LyrionJS` folder in LMS's **manual** plugin folder
    (on Debian/Ubuntu `/var/lib/squeezeboxserver/Plugins/LyrionJS`; elsewhere, the plugin folders
    are listed under *Settings › Information*), owned by the LMS user. Not under `cache/InstalledPlugins`:
    LMS treats that folder as repository-managed and uninstalls anything it didn't download.
@@ -55,7 +55,7 @@ All of Slimproto runs in the page. The plugin is a lightweight byte pipe:
 | | Where |
 |---|---|
 | Slimproto client, player state machine, sync, decoders, output, UI | the browser |
-| Serve the page; pipe a WebSocket to LMS's own Slimproto port with a 10 s hold for dropouts; check the page's origin and that its HELO uses LyrionJS's MAC prefix | the plugin (about 300 lines of Perl) |
+| Serve the page; pipe a WebSocket to LMS's own Slimproto port with a 10 s hold for dropouts; check the page's origin and that its HELO uses LyrionJS's MAC prefix | the plugin (about 550 lines of Perl) |
 | Audio | the browser fetches LMS's normal `/stream.mp3`, as any squeezelite does |
 
 The plugin also turns on LMS's existing *proxy streams* option for LyrionJS players only, so radio
@@ -73,25 +73,23 @@ python3 relay.py --lms 192.168.1.20   # dev only: the page against a real LMS wi
 Tests:
 
 ```sh
-node --test tests/                               # decoders, Slimproto, player, MP3 joins, fMP4 muxer (checked with ffmpeg)
+node --test tests/                               # decoders, Slimproto, player, transport, outputs, fMP4 (checked with ffmpeg)
 python3 -m unittest discover -s tests            # the dev relay against a fake LMS
 tests/e2e/testlms.sh                             # a disposable LMS 9.1 in Docker, plugin installed
+tests/perl.sh                                    # the plugin's Perl tests, inside that container
 python3 tests/e2e/bridge_live.py http://127.0.0.1:19000      # the plugin's socket protocol, live
-# the plugin's Perl unit tests, with LMS's own libraries (inside the test container):
-docker cp plugin lyrionjs-testlms:/tmp/p && docker exec lyrionjs-testlms sh -c \
-  'mkdir -p /tmp/l/Plugins && cp -r /tmp/p/LyrionJS /tmp/l/Plugins/ && cd /lms && perl \
-   -I/lms/CPAN/arch/5.36/x86_64-linux-thread-multi -I/lms/CPAN/arch/5.36 -I/lms -I/lms/CPAN -I/tmp/l /tmp/p/t/bridge.t'
 ```
 
 Never run the live tests against a household server: they create and remove test players.
 
 | Path | What |
 |---|---|
-| `plugin/LyrionJS/` | The LMS plugin: `Plugin.pm`, `Bridge.pm`, `install.xml`, `strings.txt`, `HTML/lyrionjs.html` (built) |
-| `src/core.js` | Slimproto, the player state machine, FLAC/PCM decoders, MP3 framing (no DOM, no I/O) |
-| `src/worklet.js` | Web Audio output stage (AudioWorklet on HTTPS, main thread on http) |
-| `src/media.js` | Media-element output: FLAC verbatim frames → fragmented MP4 → (Managed) Media Source |
-| `src/app.js` | Transport (socket with resume, fetch streams), output choice, UI |
+| `plugin/LyrionJS/` | The LMS plugin: `Plugin.pm`, `Bridge.pm`, `Settings.pm`, `install.xml`, `strings.txt`, `HTML/lyrionjs.html` (built) |
+| `plugin/t/` | The plugin's Perl tests, and protocol vectors shared with the relay's tests |
+| `src/core/` | Slimproto, the player state machine, FLAC/PCM/MP3 decoding (no DOM, no I/O) |
+| `src/output/` | Web Audio output stage and resampler; media-element output (FLAC verbatim frames → fMP4 → (Managed) Media Source) |
+| `src/host/` | The control socket with resume, and audio streams |
+| `src/app/` | The UI: router, widgets, LMS menus, this browser's player, one file per view |
 | `relay.py` | Dev-only stand-in for the plugin |
 
 ## Limitations

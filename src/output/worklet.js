@@ -93,5 +93,5 @@ if (typeof AudioWorkletProcessor === 'function' && typeof registerProcessor === 
     process(inputs, outputs) { return this.core.process(inputs, outputs); }
   });
 } else {
-  globalThis.LyrionOutputCore = LyrionOutputCore;
+  (globalThis.LJ || (globalThis.LJ = {})).LyrionOutputCore = LyrionOutputCore;
 }

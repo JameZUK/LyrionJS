@@ -5,6 +5,8 @@
 use strict;
 use warnings;
 use Test::More 'no_plan';
+use FindBin;
+use JSON::XS::VersionOneAndTwo;
 
 # Constants LMS defines in its main script.
 BEGIN { package main; use constant { ISWINDOWS => 0, INFOLOG => 0, DEBUGLOG => 0 } }
@@ -15,28 +17,48 @@ my $B = 'Plugins::LyrionJS::Bridge';
 # --- WebSocket handshake (RFC 6455's own example) -------------------------------------------
 is($B->can('acceptKey')->('dGhlIHNhbXBsZSBub25jZQ=='), 's3pPLMBiTxaQ9kYGzzhZRbK+xOo=', 'accept key');
 
-# --- origin ----------------------------------------------------------------------------------
-my $ok = \&Plugins::LyrionJS::Bridge::originAllowed;
-ok($ok->(undef, 'lms:9000'), 'no Origin (not a browser page) is allowed');
-ok($ok->('http://lms:9000', 'lms:9000'), 'same origin');
-ok($ok->('http://LMS:9000', 'lms:9000'), 'host compared without case');
-ok($ok->('http://lms', 'lms:80'), 'default http port');
-ok($ok->('https://music.example.com', 'music.example.com:443'), 'default https port');
-ok(!$ok->('http://evil.example', 'lms:9000'), 'another site is refused');
-ok(!$ok->('http://lms:9001', 'lms:9000'), 'another port is refused');
-ok(!$ok->('http://lms:9000.evil.example', 'lms:9000'), 'suffix trick refused');
-ok(!$ok->('null', 'lms:9000'), 'opaque origin refused');
-ok(!$ok->('http://lms:9000', undef), 'no Host refused');
+# --- shared vectors (also run against the dev relay: tests/test_relay.py) ------------------------
+my $V = do { local $/; open my $fh, '<', "$FindBin::Bin/vectors.json" or die "vectors.json: $!"; from_json(<$fh>) };
+for my $t (@{ $V->{origin} }) {
+	my ($origin, $hosts, $want, $name) = @$t;
+	is(Plugins::LyrionJS::Bridge::originAllowed($origin, @$hosts) ? 1 : 0, $want ? 1 : 0, "origin: $name");
+}
+for my $t (@{ $V->{helo} }) {
+	my ($hex, $want, $name) = @$t;
+	is(Plugins::LyrionJS::Bridge::heloMac(pack 'H*', $hex), $want, "HELO: $name");
+}
+for my $t (@{ $V->{clientFrames} }) {
+	my ($hex, $count, $rest, $name) = @$t;
+	my $buf = pack 'H*', $hex;
+	my $r = Plugins::LyrionJS::Bridge::clientFrames(\$buf);
+	if (defined $count) {
+		is(scalar @$r, $count, "frames: $name");
+		is(unpack('H*', $buf), $rest, "frames: $name (left over)");
+	}
+	else {
+		is($r, undef, "frames: $name");
+	}
+}
 
-# --- HELO check --------------------------------------------------------------------------------
-sub helo { my $mac = shift; 'HELO' . pack('N', 36) . "\x0c\x00" . pack('C6', @$mac) . ("\0" x 20) }
-my $mac = \&Plugins::LyrionJS::Bridge::heloMac;
-is($mac->(substr(helo([2, 0x4c, 0x4a, 1, 2, 3]), 0, 15)), '', 'needs 16 bytes');
-is($mac->(helo([2, 0x4c, 0x4a, 0xab, 2, 3])), '02:4c:4a:ab:02:03', 'LyrionJS MAC accepted');
-is($mac->(helo([0, 4, 0x20, 0x23, 0x2d, 0x84])), undef, 'a hardware player MAC is refused');
-is($mac->('STAT' . ("\0" x 20)), undef, 'must start with HELO');
 ok(Plugins::LyrionJS::Bridge::isLyrionJSPlayer('02:4C:4A:00:00:01'), 'player test is case-insensitive');
 ok(!Plugins::LyrionJS::Bridge::isLyrionJSPlayer('00:04:20:23:2d:84'), 'hardware player is not ours');
+
+# --- a frame completed by a later message ------------------------------------------------------
+{
+	my $stat = 'STAT' . pack('N', 3) . 'abc';
+	my $buf = substr($stat, 0, 5);
+	is(scalar @{ Plugins::LyrionJS::Bridge::clientFrames(\$buf) }, 0, 'a partial frame waits');
+	$buf .= substr($stat, 5);
+	is(Plugins::LyrionJS::Bridge::clientFrames(\$buf)->[0], $stat, 'and completes');
+}
+
+# --- secrets -----------------------------------------------------------------------------------
+my $same = \&Plugins::LyrionJS::Bridge::sameSecret;
+ok($same->('abcd', 'abcd'), 'same secret');
+ok(!$same->('abcd', 'abce'), 'different secret');
+ok(!$same->('abc', 'abcd'), 'different length');
+ok(!$same->(undef, 'abcd'), 'no secret');
+ok(!$same->({}, 'abcd'), 'not a string');
 
 # --- frames ----------------------------------------------------------------------------------
 sub clientFrame {
@@ -76,6 +98,10 @@ for my $len (0, 5, 125, 126, 300, 65535, 65536) {
 	is(($parse->(\$buf))[1], 1009, 'over-size message refused before it arrives');
 	$buf = pack('CCNN', 0x82, 0x80 | 127, 1, 0);
 	is(($parse->(\$buf))[1], 1009, 'giant length refused');
+	$buf = pack('CC', 0x09, 0x80) . 'mask';
+	is(($parse->(\$buf))[1], 1002, 'fragmented ping refused');
+	$buf = pack('CC', 0x89, 0x80 | 126) . pack('n', 200) . 'mask' . ('x' x 200);
+	is(($parse->(\$buf))[1], 1002, 'over-long ping refused');
 }
 my $enc = \&Plugins::LyrionJS::Bridge::encodeFrame;
 is(unpack('H*', $enc->(0x2, 'ab')), '820261' . '62', 'small server frame');

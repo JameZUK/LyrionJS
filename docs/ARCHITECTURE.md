@@ -5,7 +5,8 @@ it a full controller UI. It ships as an LMS plugin. **It adds a new way to play;
 change how LMS behaves.**
 
 Principle: **all of Slimproto runs in the browser.** The plugin is a byte pipe with three
-cheap checks. It does no decoding, keeps no player state and has no protocol logic.
+cheap checks. It does no decoding, keeps no player state and has no protocol logic beyond
+finding Slimproto frame boundaries in what the page sends.
 
 ```
  Browser: the LyrionJS page                                  LMS (unchanged)
@@ -29,7 +30,7 @@ cheap checks. It does no decoding, keeps no player state and has no protocol log
 |---|---|---|
 | 1 | Dropouts | **Light resume.** The plugin holds LMS's Slimproto socket for 10 s after the WebSocket drops and replays what the browser missed. No heartbeats on the player's behalf: LMS drops a player silent for 15 s, so the hold stays under that. Longer outages fall back to a normal reconnect. |
 | 2 | Direct streams | **A + C.** The plugin sets LMS's existing per-player *streaming method: proxied* option on LyrionJS players only, so radio and podcasts come through `/stream.mp3`. If a handler still sends a direct stream, the browser tries it itself (works only where the station allows cross-site requests); otherwise the track fails cleanly. |
-| 3 | Checks in the pipe | **Origin** (only the page LMS served may open the socket) and **MAC prefix** (HELO must use `02:4c:4a`, so a page can't impersonate a hardware player). No frame policing. |
+| 3 | Checks in the pipe | **Origin** (only the page LMS served may open the socket) and **MAC prefix** (every HELO must use `02:4c:4a`, and the same MAC throughout a session, so a page can't impersonate a hardware player). Otherwise no frame policing: the plugin only splits what the page sends into whole Slimproto frames. |
 | 4 | iOS and mobile | **First build.** Detect iPhone, iPad and Android and play through an `<audio>` element fed by Managed Media Source or Media Source, so playback survives a locked screen. Desktops use Web Audio. Chosen automatically with a self-test; can be overridden in Settings. |
 | 5 | Standalone relay | **Dev only.** `relay.py` emulates the plugin's URLs exactly and proxies everything else to a given LMS, so the page has one code path. Not for real use. |
 
@@ -57,8 +58,10 @@ authentication of its own.
 ### WebSocket protocol (`/plugins/LyrionJS/ws`)
 
 1. The client opens the socket. The plugin refuses (403) if an `Origin` header is present
-   and its host isn't the request's `Host`.
-2. The client's first message is text JSON, one of:
+   and its host isn't the request's `Host` or a proxy's `X-Forwarded-Host`. A host without a
+   port takes the Origin scheme's default (80 or 443), so a page behind an HTTPS proxy works.
+   More than 64 sockets at once are refused (503).
+2. Within 10 s the client's first message is text JSON, one of (otherwise **1008**):
    - `{"hello":1}`: a new session.
    - `{"resume":{"session":S,"secret":K,"received":N}}`: `N` is the number of Slimproto
      bytes the client has received in that session.
@@ -69,19 +72,37 @@ authentication of its own.
    A refused resume (unknown session, wrong secret, or bytes no longer held) is answered
    with close code **4404**; the client then starts a new session.
 4. After that every message is **binary, raw Slimproto bytes**, in both directions. The
-   plugin doesn't parse them, with one exception: in a new session, the first 16 bytes the
-   client sends must be a HELO whose MAC starts with `02:4c:4a`, or the socket is closed
-   with **1008**.
+   plugin reads only the frame headers (4-byte opcode, 4-byte length) of what the client
+   sends, and passes whole frames to LMS. A session's first frame must be a HELO whose MAC
+   starts with `02:4c:4a`, and any later HELO must carry the same MAC; bytes that aren't
+   Slimproto, or a frame over 64 KiB, close the socket with **1008**.
 5. The plugin keeps the last 256 KiB sent to the client, counted from the start of the
    session, so a resume can replay from any `N` still held.
 6. When the WebSocket drops, the plugin keeps the LMS connection open for **10 s**. A resume
    within that time attaches to it; otherwise the LMS connection is closed and LMS sees the
    player disconnect.
 7. LMS closing its side ends the session (close code **1001**).
+   An attached socket the plugin hears nothing on for 30 s (LMS polls every player every
+   5 s, and the page answers) is dropped as if it had disconnected, and so is one more than
+   256 writes behind; both then get the hold. A close frame is sent after whatever is
+   already queued to that socket.
 8. A new session whose HELO has the same MAC as an existing session ends that one first, so
    LMS never sees two connections for one player.
 
-Limits: 32 sessions, 64 KiB per client message.
+Limits: 32 sessions, 64 sockets, 64 KiB per client message.
+
+Close codes the plugin sends:
+
+| Code | Meaning | Client |
+|---|---|---|
+| 1000, 1001 | closed; LMS ended the player's connection, or the server is stopping | new session later |
+| 1002, 1009 | WebSocket protocol error; message too big | new session |
+| 1008 | policy: no or bad hello, not a LyrionJS HELO, not Slimproto | new session |
+| 1011 | LMS's Slimproto port can't be reached | retry later |
+| 1013 | too many players | retry later |
+| 4000 | replaced: a newer socket or session took this player | stop |
+| 4403 | browser players are switched off in Settings | controller only |
+| 4404 | resume refused | new session |
 
 ### What the client must do (the page)
 
@@ -98,12 +119,17 @@ Limits: 32 sessions, 64 KiB per client message.
 
 One self-contained HTML file built from `src/`:
 
-| File | What |
+| Folder | What |
 |---|---|
-| `core.js` | Slimproto framing, HELO/STAT, the player state machine, FLAC decoder, PCM, MP3 framing (no DOM, no I/O) |
-| `worklet.js` | The output stage: sample-accurate starts, sync pauses and skips, volume ramp, position reports. Runs as an AudioWorklet on secure pages, on the main thread elsewhere |
-| `media.js` | The media-element output: PCM → FLAC verbatim frames → fragmented MP4 → `<audio>` via (Managed) Media Source |
-| `app.js` | The browser host (socket, streams, outputs) and the UI |
+| `src/core/` | No DOM, no I/O, runs under Node: `bytes.js` (byte queues), `slimproto.js` (framing, HELO, STAT), `decoder.js` (the decoder interface), `flac.js`, `pcm.js`, `mp3.js` (framing, gapless trim, the WebCodecs chunk decoder), `player.js` (the player state machine: tracks, sync, reports) |
+| `src/output/` | `worklet.js` (the output stage: sample-accurate starts, sync pauses and skips, volume ramp, position reports; an AudioWorklet on secure pages, main thread elsewhere), `webaudio.js` (the Web Audio output and resampler), `fmp4.js` and `media.js` (PCM → FLAC verbatim frames → fragmented MP4 → `<audio>` via (Managed) Media Source) |
+| `src/host/` | `transport.js`: the control socket with resume, and audio streams over `fetch()`, with the browser APIs injected so it runs under Node too |
+| `src/app/` | The UI, sharing one scope: `util`, `lms` (JSON-RPC), `state`, `widgets`, `router`, `poll`, `actions`, `slimbrowse` (LMS menus), `local` (this browser's player), `views/` (one file per page), `boot` |
+
+`build.py` inlines them, in that order, into one HTML file: core, output and host as
+`<script id="lj-lib">` modules on a shared `LJ` namespace (the worklet's text is also loaded
+into the AudioWorklet from `lj-worklet`), the app wrapped in one function. The page sets a
+Content-Security-Policy: nothing is loaded from other sites, and no inline handlers.
 
 ### Transport
 
@@ -143,14 +169,22 @@ and falls back to Web Audio if the media path doesn't work.
 ## The dev relay (`relay.py`)
 
 For development only: `python3 relay.py --lms 192.168.1.20`. It serves the page and the same
-`/plugins/LyrionJS/ws` and `/log` endpoints with the same protocol, and proxies every other
-path to that LMS. That lets you test page changes against a real server without installing
+`/plugins/LyrionJS/ws`, `/log` and `config.json` endpoints with the same protocol, rules and
+close codes (`--no-players` acts as the plugin switched off), and proxies every other path to
+that LMS. It hides the page's Origin from LMS, so it refuses cross-site POSTs itself, as LMS
+would. That lets you test page changes against a real server without installing
 the plugin. Not for real use: no TLS, no authentication beyond what LMS has.
 
 ## Testing
 
 - `node --test tests/`: decoders (bit-exact FLAC), Slimproto, the player against a fake LMS,
   the MP3 chunk decoder, the fMP4 muxer (output decoded by `ffmpeg` and compared bit for bit).
-- `python3 -m unittest discover -s tests`: the dev relay's socket protocol.
-- `prove plugin/t`: the plugin's WebSocket framing, resume and checks, with LMS stubs.
-- End to end against a disposable LMS in Docker (`tests/e2e/`), never the household server.
+- `python3 -m unittest discover -s tests`: the dev relay's socket protocol, against a fake LMS.
+- `tests/perl.sh`: the plugin's tests with LMS's own libraries, in the test container:
+  `bridge.t` (WebSocket framing, origin, HELO and Slimproto checks, the replay buffer) and
+  `sessions.t` (hello, resume, hold, timeouts, closing and back-pressure, with LMS's event
+  loop stubbed).
+- `plugin/t/vectors.json`: protocol cases both the plugin's and the relay's tests run, so the
+  two can't drift apart.
+- End to end against a disposable LMS in Docker (`tests/e2e/`), never the household server:
+  `bridge_live.py` runs against the plugin or the relay.

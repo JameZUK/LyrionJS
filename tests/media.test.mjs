@@ -11,9 +11,7 @@ import { createRequire } from 'node:module';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const require = createRequire(import.meta.url);
-require(path.join(here, '..', 'src', 'core.js'));
-require(path.join(here, '..', 'src', 'media.js'));
-const LJ = globalThis.LJ;
+const LJ = require('./load.cjs')('core', 'output');
 const fx = (n) => new Uint8Array(fs.readFileSync(path.join(here, 'fixtures', n)));
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'lyrionjs-media-'));
 
@@ -70,7 +68,7 @@ test('float to int conversion is exact for decoded integers and clamps the rest'
 test('FLAC frame header coding of large sample numbers', () => {
   const ch = [new Int32Array(16), new Int32Array(16)];
   for (const n of [0, 127, 128, 2047, 2048, 65535, 2 ** 31, 2 ** 35]) {
-    const f = LJ.flacFrame(ch, 0, 16, 16, n);
+    const f = LJ.flacVerbatimFrame(ch, 0, 16, 16, n);
     // A stream header first (the frame takes its sample rate from it), then the frame. Our own
     // decoder checks both CRCs, so it accepts the frame only if the header coding is right.
     const head = new Uint8Array([0x66, 0x4c, 0x61, 0x43, 0x80, 0, 0, 34, ...LJ.streamInfo(44100, 2, 16, 4096)]);

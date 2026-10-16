@@ -35,10 +35,12 @@ $prefs->init({
 	defaultOutput     => 'auto',  # auto | webaudio | media
 	clientDiagnostics => 0,       # pages may write diagnostics to the LMS log
 });
+$prefs->setValidate({ validator => sub { ($_[1] || '') =~ /^(?:auto|webaudio|media)$/ } }, 'defaultOutput');
 
-use constant VERSION  => '0.1.0';
+use constant VERSION  => '0.2.0';
 use constant PAGE_URL => '/plugins/LyrionJS/';
 use constant ICON     => 'plugins/LyrionJS/html/icon.svg';
+use constant MENU_ID  => 'pluginLyrionJS';
 
 my $pageFile = catfile(dirname(__FILE__), 'HTML', 'lyrionjs.html');
 my ($pageBody, $pageMtime) = ('', 0);
@@ -63,7 +65,7 @@ sub initPlugin {
 	Slim::Control::Request::addDispatch(['lyrionjs', 'info', '_index', '_quantity'], [0, 1, 1, \&_info]);
 	Slim::Control::Jive::registerPluginMenu([{
 		text    => string('PLUGIN_LYRIONJS_MENU'),
-		id      => 'pluginLyrionJS',
+		id      => MENU_ID,
 		node    => 'home',
 		weight  => 1000,
 		icon    => ICON,
@@ -80,6 +82,7 @@ sub initPlugin {
 
 sub shutdownPlugin {
 	Slim::Control::Request::unsubscribe(\&_newClient);
+	Slim::Control::Jive::deleteMenuItem(MENU_ID);
 	Plugins::LyrionJS::Bridge->shutdown();
 }
 

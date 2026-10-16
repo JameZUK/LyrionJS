@@ -20,6 +20,7 @@ import hashlib
 import json
 import logging
 import os
+import re
 import secrets
 import socket
 import struct
@@ -31,10 +32,18 @@ LOG = logging.getLogger("lyrionjs-dev")
 HERE = os.path.dirname(os.path.abspath(__file__))
 PAGE = os.path.join(HERE, "lyrionjs.html")
 WS_GUID = b"258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
-HOLD = 10
+HOLD = 10            # seconds a dropped page's LMS connection is kept
+HELLO_WAIT = 10      # seconds a new socket has to say hello
+IDLE = 30            # seconds of silence before an attached socket is dropped
+SEND_WAIT = 10       # seconds a page may take to accept what is sent to it
 REPLAY_BYTES = 256 * 1024
 MAX_MESSAGE = 64 * 1024
 MAX_SESSIONS = 32
+MAX_SOCKETS = 64
+VERSION = "dev"
+# Close codes, as the plugin's (docs/ARCHITECTURE.md)
+GOING, PROTOCOL, DROPPED, POLICY, TOO_BIG, ERROR, TRY_LATER = 1001, 1002, 1006, 1008, 1009, 1011, 1013
+REPLACED, DISABLED, NO_RESUME = 4000, 4403, 4404
 MAC_PREFIX = b"\x02\x4c\x4a"
 MAX_HEADER = 64 * 1024
 MAX_BODY = 8 * 1024 * 1024
@@ -118,8 +127,10 @@ async def read_request(reader):
     return Request(parts[0], parts[1], headers, body)
 
 
-def response(status, reason, headers=(), body=b""):
-    out = [f"HTTP/1.1 {status} {reason}"] + [f"{k}: {v}" for k, v in headers] + [f"Content-Length: {len(body)}"]
+def response(status, reason, headers=(), body=b"", length=None):
+    """length: for a HEAD answer, the length the GET body would have."""
+    n = len(body) if length is None else length
+    out = [f"HTTP/1.1 {status} {reason}"] + [f"{k}: {v}" for k, v in headers] + [f"Content-Length: {n}"]
     return ("\r\n".join(out) + "\r\n\r\n").encode("latin-1") + body
 
 
@@ -127,18 +138,22 @@ def plain(status, text):
     return response(status, text, [("Content-Type", "text/plain")], text.encode())
 
 
-def origin_allowed(origin, host):
-    """Same rule as the plugin: no Origin, or an Origin naming the Host it was sent to."""
+def _with_port(host, port):
+    return host if re.search(r":\d+$", host) else host + port
+
+
+def origin_allowed(origin, *hosts):
+    """Same rule as the plugin: no Origin, or an Origin naming the Host (or a proxy's
+    X-Forwarded-Host) it was sent to; a host without a port has the Origin scheme's."""
     if not origin:
         return True
-    if not host:
+    m = re.fullmatch(r"(https?)://([^/]+)", origin, re.I)
+    if not m:
         return False
-    u = urlsplit(origin)
-    if u.scheme not in ("http", "https") or not u.netloc or u.path:
-        return False
-    ohost = u.netloc if ":" in u.netloc else u.netloc + (":443" if u.scheme == "https" else ":80")
-    host = host if ":" in host else host + ":80"
-    return ohost.lower() == host.lower()
+    port = ":443" if m.group(1).lower() == "https" else ":80"
+    ohost = _with_port(m.group(2), port).lower()
+    return any(ohost == _with_port(h, port).lower()
+               for value in hosts if value for h in re.split(r"\s*,\s*", value) if h)
 
 
 def helo_mac(data):
@@ -148,6 +163,21 @@ def helo_mac(data):
     if data[:4] != b"HELO" or data[10:13] != MAC_PREFIX:
         return None
     return ":".join(f"{b:02x}" for b in data[10:16])
+
+
+def client_frames(buf):
+    """Splits the complete Slimproto frames off the front of buf (a bytearray, consumed).
+    Returns them, or None if the bytes can't be Slimproto."""
+    out = []
+    while len(buf) >= 8:
+        op, n = bytes(buf[:4]), struct.unpack(">I", buf[4:8])[0]
+        if not all(0x20 <= b <= 0x7E for b in op) or n > MAX_MESSAGE:
+            return None
+        if len(buf) < 8 + n:
+            break
+        out.append(bytes(buf[:8 + n]))
+        del buf[:8 + n]
+    return None if len(buf) > MAX_MESSAGE else out
 
 
 class WebSocket:
@@ -165,9 +195,11 @@ class WebSocket:
             elif n == 127:
                 n = struct.unpack(">Q", await self.r.readexactly(8))[0]
             if not masked:
-                raise ProtocolError(1002)
+                raise ProtocolError(PROTOCOL)
             if n > MAX_MESSAGE or len(message) + n > MAX_MESSAGE:
-                raise ProtocolError(1009)
+                raise ProtocolError(TOO_BIG)
+            if op & 0x8 and (not fin or n > 125):
+                raise ProtocolError(PROTOCOL)
             mask = await self.r.readexactly(4)
             data = bytes(b ^ mask[i & 3] for i, b in enumerate(await self.r.readexactly(n)))
             if op == 0x8:
@@ -177,29 +209,46 @@ class WebSocket:
                 continue
             if op == 0xA:
                 continue
-            if op in (0x1, 0x2):
+            if op in (0x1, 0x2) and msg_op is None:
                 msg_op = op
             elif op != 0x0 or msg_op is None:
-                raise ProtocolError(1002)
+                raise ProtocolError(PROTOCOL)    # a new message inside another, or no message
             message += data
             if fin:
                 return msg_op, bytes(message)
 
-    async def send(self, data, op=0x2):
+    def write(self, data, op=0x2):
+        """Queues a frame; nothing else can come between its bytes."""
         if self.closed:
             return
         n = len(data)
         hdr = struct.pack(">BB", 0x80 | op, n) if n < 126 else \
             struct.pack(">BBH", 0x80 | op, 126, n) if n < 65536 else struct.pack(">BBQ", 0x80 | op, 127, n)
         self.w.write(hdr + data)
-        await self.w.drain()
+
+    async def drain(self):
+        """Waits for the page to take what is queued; a page that doesn't is dropped."""
+        try:
+            await asyncio.wait_for(self.w.drain(), SEND_WAIT)
+        except asyncio.TimeoutError:
+            self.abort()
+            raise ConnectionError("page not reading")
+
+    async def send(self, data, op=0x2):
+        self.write(data, op)
+        await self.drain()
+
+    def abort(self):
+        self.closed = True
+        self.w.transport.abort()
 
     async def close(self, code=1000, reason=""):
         if not self.closed:
             try:
-                self.w.write(struct.pack(">BB", 0x88, 2 + len(reason)) + struct.pack(">H", code) + reason.encode())
-                await self.w.drain()
-            except (OSError, ConnectionError):
+                self.write(struct.pack(">H", code) + reason.encode()[:100], 0x8)
+                self.closed = True
+                await asyncio.wait_for(self.w.drain(), 2)
+            except (OSError, ConnectionError, asyncio.TimeoutError):
                 pass
             self.closed = True
         try:
@@ -224,7 +273,7 @@ class Session:
         self.up_r = self.up_w = None
         self.ws = None
         self.sent, self.buf, self.buf_start = 0, bytearray(), 0
-        self.helo_ok, self.helo, self.mac = False, b"", None
+        self.out, self.mac = bytearray(), None
         self.hold_task = self.pump_task = None
 
     def keep(self, data):
@@ -242,9 +291,11 @@ class Session:
 
 
 class Relay:
-    def __init__(self, lms_host, lms_port, slim_port=3483, page=PAGE):
+    def __init__(self, lms_host, lms_port, slim_port=3483, page=PAGE, players=True):
         self.lms_host, self.lms_port, self.slim_port, self.page = lms_host, lms_port, slim_port, page
+        self.players = players     # the plugin's "enabled" setting
         self.sessions = {}
+        self.sockets = 0
 
     async def handle(self, reader, writer):
         try:
@@ -275,13 +326,26 @@ class Relay:
             if req.header("upgrade").lower() != "websocket" or not req.header("sec-websocket-key"):
                 writer.write(plain(400, "WebSocket only"))
                 return True
-            if not origin_allowed(req.header("origin"), req.header("host")):
+            if not self.same_origin(req):
                 writer.write(plain(403, "Forbidden origin"))
                 return True
-            await self.websocket(req, reader, writer)
+            if self.sockets >= MAX_SOCKETS:
+                writer.write(plain(503, "Too many sockets"))
+                return True
+            self.sockets += 1
+            try:
+                await self.websocket(req, reader, writer)
+            finally:
+                self.sockets -= 1
             return False
+        if p == "/plugins/LyrionJS/config.json" and req.method in ("GET", "HEAD"):
+            body = json.dumps({"enabled": int(self.players), "defaultOutput": "auto", "clientDiagnostics": 1,
+                               "version": VERSION}).encode()
+            writer.write(response(200, "OK", [("Content-Type", "application/json"), ("Cache-Control", "no-store")],
+                                  body if req.method == "GET" else b"", length=len(body)))
+            return True
         if p == "/plugins/LyrionJS/log" and req.method == "POST":
-            if not origin_allowed(req.header("origin"), req.header("host")):
+            if not self.same_origin(req):
                 writer.write(plain(403, "Forbidden origin"))
                 return True
             try:
@@ -303,9 +367,18 @@ class Relay:
                 writer.write(plain(404, "lyrionjs.html not found: run build.py"))
                 return True
             writer.write(response(200, "OK", [("Content-Type", "text/html; charset=utf-8"), ("Cache-Control", "no-cache")],
-                                  body if req.method == "GET" else b""))
+                                  body if req.method == "GET" else b"", length=len(body)))
+            return True
+        # LMS checks that a POST comes from its own pages (Origin against Host). The proxy hides
+        # the page's Origin from LMS, so it does that check itself.
+        if req.method not in ("GET", "HEAD") and not self.same_origin(req):
+            writer.write(plain(403, "Forbidden origin"))
             return True
         return await self.proxy(req, writer)
+
+    @staticmethod
+    def same_origin(req):
+        return origin_allowed(req.header("origin"), req.header("host"), req.header("x-forwarded-host"))
 
     # -- the Slimproto pipe ----------------------------------------------------
 
@@ -318,53 +391,42 @@ class Relay:
         session = None
         code = 1000
         try:
-            first = await ws.recv()
+            try:
+                first = await asyncio.wait_for(ws.recv(), HELLO_WAIT)
+            except asyncio.TimeoutError:
+                raise ProtocolError(POLICY)
             if first is None:
                 return
             op, data = first
             msg = json.loads(data) if op == 0x1 else None
             if not isinstance(msg, dict):
-                raise ProtocolError(1008)
+                raise ProtocolError(POLICY)
             if isinstance(msg.get("resume"), dict):
                 session = await self.resume(ws, msg["resume"])
-                if session is None:
-                    code = 4404
-                    return
             elif msg.get("hello"):
                 session = await self.new_session(ws)
-                if session is None:
-                    code = 1011
-                    return
             else:
-                raise ProtocolError(1008)
+                raise ProtocolError(POLICY)
             while True:
-                m = await ws.recv()
+                try:
+                    m = await asyncio.wait_for(ws.recv(), IDLE)
+                except asyncio.TimeoutError:
+                    LOG.info("session %s: socket silent, dropped", session.id[:8])
+                    ws.abort()
+                    raise ConnectionError("silent")
                 if m is None:
                     return
                 op, data = m
-                if op != 0x2 or session.up_w is None:
-                    continue
-                if not session.helo_ok:
-                    session.helo += data
-                    mac = helo_mac(session.helo)
-                    if mac is None:
-                        raise ProtocolError(1008)
-                    if mac == "":
-                        continue
-                    for other in list(self.sessions.values()):
-                        if other is not session and other.mac == mac:
-                            await self.end_session(other, 4000)
-                    session.mac, session.helo_ok, data, session.helo = mac, True, session.helo, b""
-                session.up_w.write(data)
-                await session.up_w.drain()
+                if op == 0x2:
+                    await self.to_lms(session, data)
         except ProtocolError as e:
             code = e.code
         except (json.JSONDecodeError, UnicodeDecodeError):
-            code = 1008
+            code = POLICY
         except (asyncio.IncompleteReadError, ConnectionError, OSError):
-            code = 1006
+            code = DROPPED
         finally:
-            if code != 1006:
+            if code != DROPPED:
                 await ws.close(code)
             else:
                 ws.closed = True
@@ -373,40 +435,75 @@ class Relay:
                 if session.id in self.sessions:
                     session.hold_task = asyncio.ensure_future(self.hold(session))
 
+    async def to_lms(self, s, data):
+        """Whole Slimproto frames only, and every HELO checked, as in the plugin."""
+        s.out += data
+        frames = client_frames(s.out)
+        if frames is None:
+            raise ProtocolError(POLICY)
+        for f in frames:
+            if f[:4] == b"HELO":
+                mac = helo_mac(f)
+                if not mac:
+                    raise ProtocolError(POLICY)
+                if s.mac is None:
+                    for other in list(self.sessions.values()):
+                        if other is not s and other.mac == mac:
+                            await self.end_session(other, REPLACED)
+                    s.mac = mac
+                elif mac != s.mac:
+                    raise ProtocolError(POLICY)
+            elif s.mac is None:
+                raise ProtocolError(POLICY)
+        if frames and s.up_w is not None:
+            s.up_w.write(b"".join(frames))
+            await asyncio.wait_for(s.up_w.drain(), SEND_WAIT)
+
     async def new_session(self, ws):
+        if not self.players:
+            raise ProtocolError(DISABLED)
         if len(self.sessions) >= MAX_SESSIONS:
-            return None
+            raise ProtocolError(TRY_LATER)
         try:
             r, w = await asyncio.wait_for(asyncio.open_connection(self.lms_host, self.slim_port), 5)
         except (OSError, asyncio.TimeoutError) as e:
             LOG.error("can't reach LMS Slimproto at %s:%s: %s", self.lms_host, self.slim_port, e)
-            return None
+            raise ProtocolError(ERROR)
         sock = w.get_extra_info("socket")
         if sock is not None:
             sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         s = Session(secrets.token_hex(16), secrets.token_hex(16))
         s.up_r, s.up_w, s.ws = r, w, ws
         self.sessions[s.id] = s
-        await ws.send(json.dumps({"session": s.id, "secret": s.secret, "resumed": False, "hold": HOLD}).encode(), 0x1)
+        ws.write(json.dumps({"session": s.id, "secret": s.secret, "resumed": False, "hold": HOLD}).encode(), 0x1)
         s.pump_task = asyncio.ensure_future(self.pump(s))
+        await ws.drain()
         LOG.info("new session %s", s.id[:8])
         return s
 
     async def resume(self, ws, r):
         s = self.sessions.get(r.get("session") or "")
-        missed = s.replay_from(r.get("received")) if s and r.get("secret") == s.secret else None
-        if missed is None:
-            return None
+        secret = r.get("secret")
+        if not s or not isinstance(secret, str) or not secrets.compare_digest(secret, s.secret) \
+                or s.replay_from(r.get("received")) is None:
+            raise ProtocolError(NO_RESUME)
         if s.hold_task:
             s.hold_task.cancel()
             s.hold_task = None
-        old, s.ws = s.ws, ws
+        old, s.ws = s.ws, None
         if old is not None:
-            await old.close(4000)
-        await ws.send(json.dumps({"session": s.id, "secret": s.secret, "resumed": True, "hold": HOLD,
-                                  "replay": len(missed)}).encode(), 0x1)
+            await old.close(REPLACED)
+        if s.id not in self.sessions:
+            raise ProtocolError(NO_RESUME)      # ended meanwhile
+        # The reply, the replay and attaching happen with no await between them, so nothing LMS
+        # sends can land before the replay or be missed by it.
+        missed = s.replay_from(r.get("received"))
+        ws.write(json.dumps({"session": s.id, "secret": s.secret, "resumed": True, "hold": HOLD,
+                             "replay": len(missed)}).encode(), 0x1)
         if missed:
-            await ws.send(missed)
+            ws.write(missed)
+        s.ws = ws
+        await ws.drain()
         LOG.info("resumed session %s (%d bytes replayed)", s.id[:8], len(missed))
         return s
 
@@ -418,11 +515,12 @@ class Relay:
                 if not data:
                     break
                 s.keep(data)
-                if s.ws is not None:
+                ws = s.ws
+                if ws is not None:
                     try:
-                        await s.ws.send(data)
+                        await ws.send(data)
                     except (ConnectionError, OSError):
-                        pass
+                        ws.abort()   # its handler sees the drop and starts the hold
         except (ConnectionError, OSError):
             pass
         await self.end_session(s, 1001)
@@ -482,12 +580,25 @@ class Relay:
             k, v = line.split(":", 1)
             kl = k.strip().lower()
             if kl == "content-length":
-                length = int(v.strip())
+                try:
+                    length = int(v.strip())
+                except ValueError:
+                    w.close()
+                    writer.write(plain(502, "Bad answer from LMS"))
+                    return False
             if kl == "transfer-encoding" and "chunked" in v.lower():
                 chunked = True
             if kl in HOP or kl == "content-length":
                 continue
             out.append(f"{k.strip()}: {v.strip()}")
+        status = (lines[0].split(" ") + ["", ""])[1]
+        if req.method == "HEAD" or status in ("204", "304") or status.startswith("1"):
+            # No body follows, whatever the headers say; a HEAD keeps the length a GET would have.
+            if length is not None and req.method == "HEAD":
+                out.append(f"Content-Length: {length}")
+            writer.write(("\r\n".join(out) + "\r\n\r\n").encode("latin-1"))
+            w.close()
+            return not chunked
         keep = length is not None and not chunked
         out.append(f"Content-Length: {length}" if keep else "Connection: close")
         if chunked:
@@ -507,7 +618,7 @@ class Relay:
             keep = False
         finally:
             w.close()
-        return keep and req.method != "HEAD"
+        return keep
 
 
 async def main_async(args):
@@ -519,7 +630,7 @@ async def main_async(args):
         if not lms:
             sys.exit("No LMS answered discovery; pass --lms HOST")
     LOG.info("LMS: %s at %s:%s", lms[2], lms[0], lms[1])
-    relay = Relay(lms[0], lms[1], args.slim_port)
+    relay = Relay(lms[0], lms[1], args.slim_port, players=not args.no_players)
     srv = await asyncio.start_server(relay.handle, args.bind, args.port, limit=MAX_HEADER)
     LOG.info("LyrionJS dev relay on http://%s:%s/plugins/LyrionJS/  (development only)", args.bind, args.port)
     async with srv:
@@ -532,6 +643,7 @@ def main():
     p.add_argument("--slim-port", type=int, default=3483, help="LMS Slimproto port")
     p.add_argument("--bind", default="127.0.0.1")
     p.add_argument("--port", type=int, default=9100)
+    p.add_argument("--no-players", action="store_true", help="refuse browser players, as with the plugin switched off")
     p.add_argument("-v", "--verbose", action="store_true")
     args = p.parse_args()
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO, format="%(asctime)s %(levelname)s %(message)s")

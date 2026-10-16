@@ -1,0 +1,200 @@
+{
+ "_about": "Protocol test vectors shared by the plugin's tests (plugin/t/bridge.t) and the dev relay's (tests/test_relay.py), so both apply the same rules. Bytes are hex.",
+ "origin": [
+  [
+   null,
+   [
+    "lms:9000"
+   ],
+   true,
+   "no Origin (not a browser page)"
+  ],
+  [
+   "http://lms:9000",
+   [
+    "lms:9000"
+   ],
+   true,
+   "same origin"
+  ],
+  [
+   "http://LMS:9000",
+   [
+    "lms:9000"
+   ],
+   true,
+   "host compared without case"
+  ],
+  [
+   "http://lms",
+   [
+    "lms:80"
+   ],
+   true,
+   "default http port"
+  ],
+  [
+   "http://lms",
+   [
+    "lms"
+   ],
+   true,
+   "no ports on either side"
+  ],
+  [
+   "https://music.example.com",
+   [
+    "music.example.com:443"
+   ],
+   true,
+   "default https port"
+  ],
+  [
+   "https://music.example.com",
+   [
+    "music.example.com"
+   ],
+   true,
+   "https page, no port in Host (behind a proxy)"
+  ],
+  [
+   "https://music.example.com",
+   [
+    "music.example.com:80"
+   ],
+   false,
+   "https page, http port"
+  ],
+  [
+   "https://music.example.com",
+   [
+    "lms:9000",
+    "music.example.com"
+   ],
+   true,
+   "X-Forwarded-Host from a proxy"
+  ],
+  [
+   "https://m.example",
+   [
+    "lms:9000",
+    "m.example, inner"
+   ],
+   true,
+   "a forwarded chain"
+  ],
+  [
+   "https://evil.example",
+   [
+    "lms:9000",
+    "music.example.com"
+   ],
+   false,
+   "another site behind a proxy"
+  ],
+  [
+   "http://evil.example",
+   [
+    "lms:9000"
+   ],
+   false,
+   "another site"
+  ],
+  [
+   "http://lms:9001",
+   [
+    "lms:9000"
+   ],
+   false,
+   "another port"
+  ],
+  [
+   "http://lms:9000.evil.example",
+   [
+    "lms:9000"
+   ],
+   false,
+   "suffix trick"
+  ],
+  [
+   "http://lms:9000/x",
+   [
+    "lms:9000"
+   ],
+   false,
+   "a path is not an origin"
+  ],
+  [
+   "null",
+   [
+    "lms:9000"
+   ],
+   false,
+   "opaque origin"
+  ],
+  [
+   "ftp://lms:9000",
+   [
+    "lms:9000"
+   ],
+   false,
+   "not http"
+  ],
+  [
+   "http://lms:9000",
+   [
+    null
+   ],
+   false,
+   "no Host"
+  ]
+ ],
+ "helo": [
+  [
+   "48454c4f0000001c0c00024c4a0102",
+   "",
+   "needs 16 bytes"
+  ],
+  [
+   "48454c4f0000001c0c00024c4aab02030000000000000000000000000000000000000000",
+   "02:4c:4a:ab:02:03",
+   "LyrionJS MAC"
+  ],
+  [
+   "48454c4f0000001c0c00000420232d840000000000000000000000000000000000000000",
+   null,
+   "a hardware player MAC"
+  ],
+  [
+   "535441540000000000000000000000000000000000000000",
+   null,
+   "must start with HELO"
+  ]
+ ],
+ "clientFrames": [
+  [
+   "48454c4f000000080c00024c4a01020353544154000000036162635354415400",
+   2,
+   "5354415400",
+   "two whole frames; a partial one waits"
+  ],
+  [
+   "4259452100000001004952202000000000",
+   2,
+   "",
+   "BYE! and IR are opcodes too"
+  ],
+  [
+   "000162696e6172792d6279746573",
+   null,
+   null,
+   "not Slimproto"
+  ],
+  [
+   "5354415400100000",
+   null,
+   null,
+   "an over-size frame"
+  ]
+ ]
+}

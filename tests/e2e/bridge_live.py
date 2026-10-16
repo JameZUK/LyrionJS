@@ -12,6 +12,7 @@ import struct
 import sys
 import time
 import unittest
+import urllib.error
 import urllib.request
 from urllib.parse import urlsplit
 
@@ -44,12 +45,15 @@ def frame(data, op=0x2):
 
 
 class WS:
+    opened = []
+
     @classmethod
-    async def open(cls, origin=f"http://{HOST}:{PORT}"):
+    async def open(cls, origin=f"http://{HOST}:{PORT}", host=f"{HOST}:{PORT}", extra=()):
         self = cls()
         self.r, self.w = await asyncio.open_connection(HOST, PORT)
-        hdrs = ["GET /plugins/LyrionJS/ws HTTP/1.1", f"Host: {HOST}:{PORT}", "Upgrade: websocket",
-                "Connection: Upgrade", f"Sec-WebSocket-Key: {KEY}", "Sec-WebSocket-Version: 13"]
+        cls.opened.append(self)
+        hdrs = ["GET /plugins/LyrionJS/ws HTTP/1.1", f"Host: {host}", "Upgrade: websocket",
+                "Connection: Upgrade", f"Sec-WebSocket-Key: {KEY}", "Sec-WebSocket-Version: 13", *extra]
         if origin:
             hdrs.append(f"Origin: {origin}")
         self.w.write(("\r\n".join(hdrs) + "\r\n\r\n").encode())
@@ -98,6 +102,9 @@ MAC_S = "02:4c:4a:ee:ee:01"
 
 class BridgeLive(unittest.IsolatedAsyncioTestCase):
     async def asyncTearDown(self):
+        for ws in WS.opened:
+            ws.w.close()
+        WS.opened.clear()
         for mac in (MAC_S, "02:4c:4a:ee:ee:02"):
             try:
                 rpc(mac, ["client", "forget"])
@@ -107,6 +114,26 @@ class BridgeLive(unittest.IsolatedAsyncioTestCase):
     async def test_other_sites_refused(self):
         ws = await WS.open(origin="http://evil.example")
         self.assertIn("403", ws.status)
+
+    async def test_origin_behind_an_https_proxy(self):
+        # A proxy that passes Host through without a port, or names the public host itself.
+        ws = await WS.open(origin="https://music.example", host="music.example")
+        self.assertIn("101", ws.status)
+        ws = await WS.open(origin="https://music.example", extra=["X-Forwarded-Host: music.example"])
+        self.assertIn("101", ws.status)
+        ws = await WS.open(origin="https://evil.example", extra=["X-Forwarded-Host: music.example"])
+        self.assertIn("403", ws.status)
+
+    async def test_socket_without_hello_is_closed(self):
+        ws = await WS.open()
+        self.assertEqual(await ws.drain(17), 1008)
+
+    async def test_diagnostics_from_another_site_refused(self):
+        req = urllib.request.Request(LMS + "/plugins/LyrionJS/log", b'{"lines":["x"]}',
+                                     {"Content-Type": "application/json", "Origin": "http://evil.example"})
+        with self.assertRaises(urllib.error.HTTPError) as e:
+            urllib.request.urlopen(req, timeout=5)
+        self.assertEqual(e.exception.code, 403)
 
     async def test_hardware_mac_refused(self):
         ws = await WS.open()
@@ -179,7 +206,6 @@ class BridgeLive(unittest.IsolatedAsyncioTestCase):
         ws = await WS.open()
         ws.w.write(frame(b"\x00binary first", 0x2))
         self.assertEqual(await ws.drain(2), 1008)
-        status = urllib.request.urlopen(urllib.request.Request(LMS + "/plugins/LyrionJS/ws"), timeout=5) if False else None
         try:
             urllib.request.urlopen(LMS + "/plugins/LyrionJS/ws", timeout=5)
             self.fail("plain GET accepted")

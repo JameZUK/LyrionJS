@@ -27,20 +27,31 @@ def helo(mac):
     return b"HELO" + struct.pack(">I", len(payload)) + payload
 
 
+VECTORS = json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "plugin", "t", "vectors.json")))
+
+
 class Pure(unittest.TestCase):
+    """The same vectors as the plugin's tests (plugin/t/vectors.json)."""
+
     def test_origin(self):
-        ok = relay.origin_allowed
-        self.assertTrue(ok("", "lms:9000"))
-        self.assertTrue(ok("http://lms:9000", "lms:9000"))
-        self.assertTrue(ok("http://lms", "lms"))
-        self.assertFalse(ok("http://evil.example", "lms:9000"))
-        self.assertFalse(ok("http://lms:9000.evil.example", "lms:9000"))
-        self.assertFalse(ok("null", "lms:9000"))
+        for origin, hosts, want, name in VECTORS["origin"]:
+            with self.subTest(name):
+                self.assertEqual(relay.origin_allowed(origin, *hosts), want)
 
     def test_helo(self):
-        self.assertEqual(relay.helo_mac(helo([2, 0x4C, 0x4A, 1, 2, 3])[:15]), "")
-        self.assertEqual(relay.helo_mac(helo([2, 0x4C, 0x4A, 1, 2, 3])), "02:4c:4a:01:02:03")
-        self.assertIsNone(relay.helo_mac(helo([0, 4, 0x20, 1, 2, 3])))
+        for hexbytes, want, name in VECTORS["helo"]:
+            with self.subTest(name):
+                self.assertEqual(relay.helo_mac(bytes.fromhex(hexbytes)), want)
+
+    def test_client_frames(self):
+        for hexbytes, count, rest, name in VECTORS["clientFrames"]:
+            with self.subTest(name):
+                buf = bytearray.fromhex(hexbytes)
+                got = relay.client_frames(buf)
+                if count is None:
+                    self.assertIsNone(got)
+                else:
+                    self.assertEqual((len(got), buf.hex()), (count, rest))
 
     def test_replay_buffer(self):
         s = relay.Session("a", "b")
@@ -70,7 +81,12 @@ class WithFakeLms(unittest.IsolatedAsyncioTestCase):
         async def web(r, w):
             head = await r.readuntil(b"\r\n\r\n")
             self.web_head = head.decode()
-            if b"/stream.mp3" in head:
+            self.web_requests = getattr(self, "web_requests", 0) + 1
+            if head.startswith(b"HEAD"):
+                w.write(b"HTTP/1.1 200 OK\r\nContent-Length: 12345\r\n\r\n")   # and no body
+                await w.drain()
+                await asyncio.sleep(1)                                             # nor a close
+            elif b"/stream.mp3" in head:
                 w.write(b"HTTP/1.0 200 OK\r\nContent-Type: audio/flac\r\n\r\n" + b"a" * 200000)
             else:
                 body = b'{"result":{}}'
@@ -175,6 +191,100 @@ class WithFakeLms(unittest.IsolatedAsyncioTestCase):
         w.close()
         resp = await self.http(b"GET /plugins/LyrionJS/ws HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n")
         self.assertIn(b"400", resp.split(b"\r\n")[0])
+
+
+    async def hello(self):
+        r, w, _ = await self.ws()
+        w.write(frame(json.dumps({"hello": 1}).encode(), 0x1))
+        _, data = await self.recv(r)
+        return r, w, json.loads(data)
+
+    async def close_code(self, r):
+        while True:
+            op, data = await self.recv(r)
+            if op == 0x8:
+                return struct.unpack(">H", data[:2])[0]
+
+    async def test_head_answered_without_waiting_for_a_body(self):
+        resp = await asyncio.wait_for(self.http(b"HEAD /music/1/cover.jpg HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n"), 0.8)
+        self.assertIn(b"200 OK", resp)
+        self.assertIn(b"Content-Length: 12345", resp)
+
+    async def test_cross_site_post_refused_before_lms(self):
+        body = b'{"method":"slim.request","params":["",["stop"]]}'
+        resp = await self.http(b"POST /jsonrpc.js HTTP/1.1\r\nHost: 127.0.0.1\r\nOrigin: http://evil.example\r\n"
+                               b"Content-Length: " + str(len(body)).encode() + b"\r\nConnection: close\r\n\r\n" + body)
+        self.assertIn(b"403", resp.split(b"\r\n")[0])
+        self.assertFalse(getattr(self, "web_requests", 0), "LMS never saw it")
+        resp = await self.http(f"POST /jsonrpc.js HTTP/1.1\r\nHost: 127.0.0.1:{self.port}\r\nOrigin: http://127.0.0.1:{self.port}\r\n"
+                               f"Content-Length: {len(body)}\r\nConnection: close\r\n\r\n".encode() + body)
+        self.assertIn(b"200", resp.split(b"\r\n")[0], "the page's own POST goes through")
+
+    async def test_resume_replay_comes_before_live_data(self):
+        r, w, h = await self.hello()
+        w.write(frame(helo([2, 0x4C, 0x4A, 7, 7, 7])))
+        for _ in range(50):
+            if self.slim_writers and self.slim_rx:
+                break
+            await asyncio.sleep(0.02)
+        sw = self.slim_writers[0]
+        w.transport.abort()
+        await asyncio.sleep(0.1)
+        sw.write(b"\x00\x05strm1")
+        await sw.drain()
+        await asyncio.sleep(0.1)
+        r2, w2, _ = await self.ws()
+        w2.write(frame(json.dumps({"resume": {"session": h["session"], "secret": h["secret"], "received": 0}}).encode(), 0x1))
+        sw.write(b"\x00\x05strm2")             # LMS keeps talking while the resume is answered
+        await sw.drain()
+        op, data = await self.recv(r2)
+        self.assertEqual(op, 0x1, "the resume answer comes first")
+        got = b""
+        while len(got) < 14:
+            got += (await self.recv(r2))[1]
+        self.assertEqual(got, b"\x00\x05strm1\x00\x05strm2", "replay, then live, nothing lost or doubled")
+        w2.close()
+
+    async def test_every_helo_checked(self):
+        r, w, _ = await self.hello()
+        w.write(frame(helo([2, 0x4C, 0x4A, 1, 1, 1])))
+        w.write(frame(helo([0, 4, 0x20, 1, 1, 1])))
+        self.assertEqual(await self.close_code(r), 1008)
+        await asyncio.sleep(0.05)
+        self.assertEqual(self.slim_rx.count(b"HELO"), 1, "the second HELO never reached LMS")
+        w.close()
+
+    async def test_split_frame_and_players_off(self):
+        r, w, _ = await self.hello()
+        h = helo([2, 0x4C, 0x4A, 2, 2, 2])
+        w.write(frame(h[:10]))
+        await asyncio.sleep(0.05)
+        self.assertEqual(self.slim_rx, b"", "half a HELO waits")
+        w.write(frame(h[10:]))
+        for _ in range(50):
+            if self.slim_rx:
+                break
+            await asyncio.sleep(0.02)
+        self.assertEqual(bytes(self.slim_rx), h)
+        w.close()
+        self.relay.players = False
+        r, w, _ = await self.ws()
+        w.write(frame(json.dumps({"hello": 1}).encode(), 0x1))
+        self.assertEqual(await self.close_code(r), 4403)
+        w.close()
+
+    async def test_no_hello_times_out(self):
+        old, relay.HELLO_WAIT = relay.HELLO_WAIT, 0.2
+        try:
+            r, w, _ = await self.ws()
+            self.assertEqual(await self.close_code(r), 1008)
+            w.close()
+        finally:
+            relay.HELLO_WAIT = old
+
+    async def test_config_json(self):
+        resp = await self.http(b"GET /plugins/LyrionJS/config.json HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n")
+        self.assertEqual(json.loads(resp.split(b"\r\n\r\n", 1)[1])["enabled"], 1)
 
 
 if __name__ == "__main__":
