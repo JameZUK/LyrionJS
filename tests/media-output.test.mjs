@@ -46,14 +46,20 @@ class FakeSourceBuffer {
   abort() { if (this.updating) throw Object.assign(new Error('busy'), { name: 'InvalidStateError' }); }
 }
 
-function fakeEnv() {
-  const env = { tasks: [], quota: null, sbs: [] };
+/** opts.cantPlay: addSourceBuffer refuses the type, as a browser without the codec does;
+ *  opts.play: what the element's play() does (a function returning a promise). */
+function fakeEnv(opts = {}) {
+  const env = { tasks: [], quota: null, sbs: [], sources: 0 };
   class FakeMediaSource {
-    constructor() { this.readyState = 'closed'; this.listeners = {}; }
+    constructor() { this.readyState = 'closed'; this.listeners = {}; env.sources++; }
     static isTypeSupported() { return true; }
     addEventListener(ev, fn) { (this.listeners[ev] = this.listeners[ev] || []).push(fn); }
-    addSourceBuffer() { const sb = new FakeSourceBuffer(env); env.sbs.push(sb); return sb; }
-    _open() { this.readyState = 'open'; for (const f of this.listeners.sourceopen || []) f(); }
+    addSourceBuffer() {
+      if (opts.cantPlay) throw new Error("MediaSource.addSourceBuffer: Can't play type");
+      const sb = new FakeSourceBuffer(env); env.sbs.push(sb); return sb;
+    }
+    // sourceopen comes later, as in a browser
+    _open() { env.tasks.push(() => { this.readyState = 'open'; for (const f of this.listeners.sourceopen || []) f(); }); }
   }
   env.MediaSource = FakeMediaSource;
   globalThis.MediaSource = FakeMediaSource;
@@ -68,7 +74,7 @@ function fakeEnv() {
     removeEventListener() {},
     set src(v) { this._src = v; if (env.lastMs && String(v).startsWith('blob:')) env.lastMs._open(); },
     get src() { return this._src; },
-    play() { this.paused = false; return Promise.resolve(); },
+    play() { if (opts.play) return opts.play(this); this.paused = false; return Promise.resolve(); },
     pause() { if (!this.paused) { this.paused = true; env.tasks.push(() => { for (const f of this.listeners.pause || []) f(); }); } },
     fire(ev) { for (const f of this.listeners[ev] || []) f(); },
   };
@@ -169,5 +175,33 @@ test('a failed media source is replaced and the host told', async () => {
   assert.equal(env.sbs.length, 2, 'a new source buffer');
   o.push(2, 44100, sec(44100, 1), 16); o.endSeq(2); env.run();
   assert.ok(env.sbs[1].buffered.length === 1, 'and it takes audio');
+  o.dispose();
+});
+
+test('a browser that refuses the unlock clip itself (not the sound) is still unlocked by the tap', async () => {
+  // Firefox: an unplayable clip is a NotSupportedError; only NotAllowedError means "no sound yet".
+  const notSupported = Object.assign(new Error('not suitable'), { name: 'NotSupportedError' });
+  const env = fakeEnv({ play: (el) => (String(el.src).startsWith('data:') ? Promise.reject(notSupported) : Promise.resolve()) });
+  const o = new LJ.MediaOutput(env.el);
+  o.prime(); for (let i = 0; i < 5; i++) await Promise.resolve();
+  assert.equal(o.needsGesture, false);
+  const refused = Object.assign(new Error('blocked'), { name: 'NotAllowedError' });
+  const env2 = fakeEnv({ play: () => Promise.reject(refused) });
+  const o2 = new LJ.MediaOutput(env2.el);
+  o2.prime(); for (let i = 0; i < 5; i++) await Promise.resolve();
+  assert.equal(o2.needsGesture, true, 'a refusal keeps it locked');
+  o.dispose(); o2.dispose();
+});
+
+test('a media source the browser keeps refusing is given up, not reopened for ever', async () => {
+  const env = fakeEnv({ cantPlay: true });
+  let fatal = 0, told = 0;
+  const o = new LJ.MediaOutput(env.el);
+  o.onFailure = (why, playing, isFatal) => { told++; if (isFatal) fatal++; };
+  o.prime(); await Promise.resolve(); await Promise.resolve();
+  env.run();
+  assert.equal(fatal, 1, 'told once that it is fatal');
+  assert.equal(told, 3);
+  assert.ok(env.sources <= 4, 'stopped opening sources: ' + env.sources);
   o.dispose();
 });

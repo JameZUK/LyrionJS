@@ -8,10 +8,13 @@
 (function (G) {
   const LJ = G.LJ;
   const MIME = 'audio/mp4; codecs="flac"';
-  const SILENT_WAV = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
+  // 50 ms of silence (8 kHz, 8-bit). It must hold samples: Firefox refuses a WAV with none, and the
+  // tap that should unlock sound then does nothing.
+  const SILENT_WAV = 'data:audio/wav;base64,UklGRrQBAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YZABAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA';
   const KEEP_BEHIND_S = 10;      // played audio kept buffered (for small skips back)
   const EVICT_EVERY_MS = 5000;
   const UNLOCK_TIMEOUT_MS = 2500;
+  const FAIL_LIMIT = 3, FAIL_WINDOW_MS = 10000;   // media source failures before giving up
 
   const mediaSourceClass = () => G.ManagedMediaSource || G.MediaSource || null;
 
@@ -132,7 +135,10 @@
         // The OS paused us (a call, another app, headphones out): report it, as a Squeezebox would.
         if (this.playing && this.externalPause) this.externalPause();
       });
-      on(el, 'error', () => this._fail('element error ' + (el.error && el.error.code)));
+      on(el, 'error', () => {
+        if (this.unlocking) return;   // the unlock clip's error, not the stream's
+        this._fail('element error ' + (el.error && el.error.code));
+      });
       this.intervals = [
         setInterval(() => { if (this.playing) this._unstick(); }, 250),
         setInterval(() => { this._evict(KEEP_BEHIND_S); this.sbq.run(); }, EVICT_EVERY_MS),
@@ -162,16 +168,25 @@
       if (this.unlocked) { this.ownPauses = 0; this.el.src = this.url; }
     }
 
-    /** The element or its source failed: start a fresh one, and tell the host (audio was lost). */
+    /**
+     * The element or its source failed: start a fresh one, and tell the host (audio was lost).
+     * A browser that fails every fresh source too (it can't play the format after all) would
+     * loop for ever: after FAIL_LIMIT failures within FAIL_WINDOW_MS, give up and tell the host
+     * it's fatal (onFailure's third argument), so it can choose another output.
+     */
     _fail(why) {
-      if (this.failing) return;
+      if (this.failing || this.dead) return;
       this.failing = true;
-      this.diag('media', 'failed: ' + why + '; starting a new media source');
       const wasPlaying = this.playing;
+      const now = Date.now();
+      this.failTimes = (this.failTimes || []).filter((t) => now - t < FAIL_WINDOW_MS);
+      this.failTimes.push(now);
+      const fatal = this.failTimes.length >= FAIL_LIMIT;
+      this.diag('media', 'failed: ' + why + (fatal ? '; giving up' : '; starting a new media source'));
       this._reset(0);
-      this._open();
+      if (fatal) this.dead = true; else this._open();
       this.failing = false;
-      if (this.onFailure) this.onFailure(why, wasPlaying);
+      if (this.onFailure) this.onFailure(why, wasPlaying, fatal);
     }
 
     // -- unlocking (iOS: play() must first succeed inside a tap) ------------------
@@ -194,7 +209,14 @@
       };
       let p;
       try { p = el.play(); } catch (e) { p = Promise.reject(e); }
-      if (p && p.then) p.then(() => { this.unlocked = true; after(); }, (e) => { clearTimeout(giveUp); this.unlocking = false; this.diag('media', 'unlock refused: ' + e.message); });
+      // Only the browser refusing sound (NotAllowedError) keeps us locked. Any other failure is the
+      // clip's, and the tap still counts: browsers allow play() for the page after a gesture.
+      const refused = (e) => {
+        this.diag('media', `unlock: ${e && e.name}: ${e && e.message}`);
+        if (e && e.name === 'NotAllowedError') { clearTimeout(giveUp); this.unlocking = false; return; }
+        this.unlocked = true; after();
+      };
+      if (p && p.then) p.then(() => { this.unlocked = true; after(); }, refused);
       else { this.unlocked = true; after(); }
     }
 

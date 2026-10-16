@@ -80,7 +80,15 @@
     S.output.onState = refreshUnlock;
     // The media element failed and was replaced (output/media.js): what was queued is lost, so
     // start the current track again where it was.
-    S.output.onFailure = async (why, wasPlaying) => {
+    S.output.onFailure = async (why, wasPlaying, fatal) => {
+      if (fatal) {
+        // The media element can't play here after all: use Web Audio from now on, in this browser.
+        diag('media', 'media element unusable (' + why + '): switching this browser to Web Audio');
+        store.set('outputMode', 'webaudio');
+        toast('This browser can\'t play through the media element: switching to Web Audio…');
+        setTimeout(() => location.reload(), 1500);
+        return;
+      }
       diag('media', 'recovering after: ' + why);
       if (!wasPlaying) return;
       try {
