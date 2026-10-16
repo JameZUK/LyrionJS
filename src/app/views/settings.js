@@ -74,7 +74,8 @@
       sections.push(h('section', {}, h('h3', { text: 'About' }),
         h('div', { class: 'about' }, logo('about-logo'),
           h('div', {}, h('div', { class: 'about-name', text: `LyrionJS ${VERSION}` }),
-            h('p', { class: 'about-text', text: 'A Slimproto player and controller for Lyrion Music Server in one page. Keyboard: Space play/pause, ←/→ previous/next, ↑/↓ volume.' })))));
+            h('p', { class: 'about-text', text: 'A Slimproto player and controller for Lyrion Music Server in one page. Keyboard: Space play/pause, ←/→ previous/next, ↑/↓ volume.' }),
+            h('button', { class: 'btn ghost sm about-more', onclick: () => push('about') }, 'More about LyrionJS…')))));
       el.replaceChildren(...sections);
     }
     render().catch(fail);

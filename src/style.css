@@ -282,3 +282,23 @@ body:not(.ready) #nav, body:not(.ready) #bar, body:not(.ready) #playerBtn { visi
   #sheet.open .sheet-panel { transform: none; }
 }
 .nav-item .nav-img { width: 20px; height: 20px; border-radius: 4px; object-fit: cover; }
+
+/* About, and the page found inside itself */
+.about-page { max-width: 640px; margin: 24px auto 40px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.about-title { margin: 8px 0 0; font-size: 26px; }
+.about-lead { margin: 0; color: var(--fg2); line-height: 1.5; max-width: 52ch; }
+.about-quip { margin: 0; min-height: 1.5em; font-weight: 700; color: var(--accent); }
+.about-facts { width: 100%; text-align: left; background: var(--bg2); border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 16px 10px; }
+.about-facts h3 { font-size: 15px; margin: 12px 0 6px; }
+.about-btns { justify-content: center; margin-top: 6px; }
+.about-more { margin-top: 10px; }
+.mirror { width: min(220px, 60vw); aspect-ratio: 1; padding: 0; border: 0; background: none; cursor: pointer; border-radius: 28%; }
+.mirror-frame { position: relative; width: 100%; height: 100%; }
+.mirror-frame .mirror-logo { position: absolute; inset: 0; width: 100%; height: 100%; filter: drop-shadow(0 4px 14px rgba(0,0,0,.35)); }
+/* Each copy sits inside the one before, a little smaller and a little turned: forever, nearly. */
+.mirror-frame > .mirror-frame { position: absolute; left: 21%; top: 21%; width: 58%; height: 58%; animation: lj-mirror 9s ease-in-out infinite alternate; }
+@keyframes lj-mirror { from { transform: rotate(-7deg); } to { transform: rotate(7deg); } }
+.mirror.wobble { animation: lj-wobble .45s ease; }
+@keyframes lj-wobble { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-8deg) scale(.96); } 75% { transform: rotate(6deg) scale(1.03); } }
+@media (prefers-reduced-motion: reduce) { .mirror-frame > .mirror-frame, .mirror.wobble { animation: none; } }
+

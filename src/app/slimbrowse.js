@@ -115,6 +115,7 @@
       if (!which) return;
       const a = actionOverride || jiveAction(item, base, which);
       if (!a || !a.cmd) return;
+      if (isLyrionJSApp(a.cmd)) { push('about', { recursion: true }); return true; }   // an LMS menu leading to LyrionJS itself
       let input = null;
       if (item.input || item.type === 'entry' || item.type === 'search' || JSON.stringify(a).includes('__TAGGEDINPUT__')) {
         input = await prompt2(firstLine(item.text) || 'Search', { placeholder: (item.input && item.input.help && item.input.help.text) || '', ok: 'OK' });
@@ -207,6 +208,7 @@
   };
 
   VIEWS.xml = (p) => {
+    if (isLyrionJSApp(p.cmd)) return VIEWS.about({ recursion: true });   // however it was reached
     const holder = h('div');
     const page = { title: p.title || '', el: holder, perPlayer: true };
     const items = loopFetch((s, n) => rpc([p.cmd, 'items', s, n, 'want_url:1', ...(p.item ? ['item_id:' + p.item] : []), ...(p.search ? ['search:' + p.search] : [])]), 'loop_loop');
@@ -245,7 +247,8 @@
     return lazyList({
       page: 100, empty: kind === 'radios' ? 'No radio services are installed on the server.' : 'No apps are installed on the server.',
       fetch: loopFetch((s, n) => rpc([kind, s, n], ''), kind + 's_loop', (x) => x.cmd),
-      render: (a) => row({ art: S.lms.art(a.icon, 96), artIcon: kind === 'radios' ? 'radio' : 'apps', title: a.name, onclick: () => push('xml', { cmd: a.cmd, title: a.name }) }),
+      render: (a) => row({ art: S.lms.art(a.icon, 96), artIcon: kind === 'radios' ? 'radio' : 'apps', title: a.name,
+        onclick: () => (isLyrionJSApp(a.cmd) ? push('about', { recursion: true }) : push('xml', { cmd: a.cmd, title: a.name })) }),
     });
   }
   VIEWS.radio = () => ({ title: 'Radio', el: serviceList('radios') });
