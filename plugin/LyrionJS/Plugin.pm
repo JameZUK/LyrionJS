@@ -40,12 +40,13 @@ $prefs->init({
 $prefs->setValidate({ validator => sub { ($_[1] || '') =~ /^(?:auto|webaudio|media)$/ } }, 'defaultOutput');
 $prefs->setValidate({ validator => sub { ($_[1] // '') =~ m{^(?:|https?://[^\s/?#]+(?:/[^\s?#]*)?)$} } }, 'pageUrl');
 
-use constant VERSION  => '0.2.2';
+use constant VERSION  => '0.2.3';
 use constant PAGE_URL => '/plugins/LyrionJS/';
-use constant ICON     => 'plugins/LyrionJS/html/icon.svg';
+use constant ICON     => 'plugins/LyrionJS/html/images/icon.png';   # PNG: Squeezer can't show SVG
 
 my $pageFile = catfile(dirname(__FILE__), 'HTML', 'lyrionjs.html');
 my ($pageBody, $pageMtime) = ('', 0);
+my %materialActions;   # section => our entry in Material Skin's custom actions
 
 sub initPlugin {
 	my $class = shift;
@@ -119,10 +120,23 @@ sub _reverseName {
 # and Material Skin's "Extras" (with this icon; Material opens it in a frame, and the page then
 # offers a tab of its own).
 sub _registerLinks {
-	return unless main::WEBUI;
 	my $url = pageUrl();
+	$_->{weblink} = $url for values %materialActions;
+	return unless main::WEBUI;
 	Slim::Web::Pages->addPageLinks('plugins', { PLUGIN_LYRIONJS_LINK => $url });
 	Slim::Web::Pages->addPageLinks('icons',   { PLUGIN_LYRIONJS_LINK => ICON });
+}
+
+# A tile on Material Skin's home screen that opens the player in a new tab with one click (a
+# Material "pinned" custom action; Material adds it again on each load, so un-pinning doesn't
+# stick). Material's plugin API keeps the hash given to it, so a new address is changed in it in
+# place (_registerLinks). Once every plugin has loaded, as Material may load after this one.
+sub postinitPlugin {
+	return unless Slim::Utils::PluginManager->isEnabled('Plugins::MaterialSkin::Plugin');
+	my $register = Plugins::MaterialSkin::Plugin->can('registerCustomAction') or return;
+	%materialActions = (pinned => { title => string('PLUGIN_LYRIONJS'), icon => 'music_note' });
+	$register->($_, $materialActions{$_}) for sort keys %materialActions;
+	_registerLinks();
 }
 
 sub _newClient {
@@ -139,14 +153,42 @@ sub _newClient {
 	}
 }
 
-# The app's one page: the player's address. parseURLs: Material shows it as a link that opens
-# a new tab; controllers that can't follow links show the address to type into a browser.
+# The app's one page: the player's address, as a link. It is answered here rather than by LMS's
+# feed browser, which marks a text item inert (Squeezer then can't open it) or gives it a browse
+# action (which controllers follow instead of the link). An item with only a weblink opens in the
+# browser on Squeezer; parseURLs makes Material show it as a link that opens a new tab;
+# controllers that can't follow links show the address to type into a browser.
+sub initCLI {
+	my $class = shift;
+	$class->SUPER::initCLI(@_);
+	Slim::Control::Request::addDispatch(['lyrionjs', 'items', '_index', '_quantity'], [0, 1, 1, \&_appItems]);
+}
+
+sub _appItems {
+	my $request = shift;
+	my $url = pageUrl();
+	my @items = (
+		{ text => $url, weblink => $url, parseURLs => 1 },
+		{ text => cstring($request->client, 'PLUGIN_LYRIONJS_MENU_INFO'), style => 'itemNoAction', action => 'none' },
+	);
+	my $i = 0;
+	for my $item (@items) {
+		$request->addResultLoop('item_loop', $i, $_, $item->{$_}) for sort keys %$item;
+		$i++;
+	}
+	$request->addResult('count', $i);
+	$request->addResult('offset', 0);
+	$request->addResult('window', { windowStyle => 'text_list' });
+	$request->setStatusDone();
+}
+
+# The same page for the classic web UI's browser.
 sub _appFeed {
 	my ($client, $callback) = @_;
 	my $url = pageUrl();
 	$callback->({ items => [
+		{ name => $url, type => 'link', url => $url, weblink => $url },
 		{ name => cstring($client, 'PLUGIN_LYRIONJS_MENU_INFO'), type => 'text' },
-		{ name => $url, type => 'text', weblink => $url, parseURLs => 1 },
 	] });
 }
 

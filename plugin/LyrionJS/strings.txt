@@ -8,7 +8,7 @@ PLUGIN_LYRIONJS_LINK
 	EN	LyrionJS web player
 
 PLUGIN_LYRIONJS_MENU_INFO
-	EN	Open the player in a new tab here, or this address in a browser on any device on your network:
+	EN	Tap the address to open the player, or open it in a browser on any device on your network.
 
 PLUGIN_LYRIONJS_OPEN
 	EN	Web player

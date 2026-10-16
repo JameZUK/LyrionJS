@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <!-- LyrionJS app icon: the source of plugin/LyrionJS/HTML/EN/plugins/LyrionJS/html/images/icon.png
+       (rendered with rsvg-convert, see README). A dark tile like other LMS app icons, LyrionJS orange. -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2b2b2b"/>
+      <stop offset="1" stop-color="#121212"/>
+    </linearGradient>
+  </defs>
+  <rect x="4" y="4" width="120" height="120" rx="28" fill="url(#bg)"/>
+  <rect x="4.75" y="4.75" width="118.5" height="118.5" rx="27.25" fill="none" stroke="#ffffff" stroke-opacity="0.08" stroke-width="1.5"/>
+  <!-- a note -->
+  <path d="M58 30v40.5a12.5 12.5 0 1 0 8 11.7V48h16V30z" fill="#f2a541"/>
+  <!-- sound waves -->
+  <path d="M88 58a20 20 0 0 1 0 28" fill="none" stroke="#f2a541" stroke-opacity="0.85" stroke-width="5.5" stroke-linecap="round"/>
+  <path d="M97 49a32 32 0 0 1 0 46" fill="none" stroke="#f2a541" stroke-opacity="0.5" stroke-width="5.5" stroke-linecap="round"/>
+</svg>

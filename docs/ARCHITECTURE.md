@@ -45,13 +45,20 @@ Perl, inside LMS's event loop, using only LMS's own APIs:
 - `GET /plugins/LyrionJS/config.json`: the plugin's settings the page needs (players on/off,
   default output, diagnostics).
 - Ways in from LMS, all with the absolute player address (below):
-  - an app, *LyrionJS*, in **My Apps** (`Slim::Plugin::OPMLBased` with `is_app`; Material
-    Skin's Apps grid shows it with the plugin's icon). LMS builds the Apps entry itself, so
-    it can't carry a link: the app's one page gives the address, as a link where the
-    controller can follow one (`parseURLs`; Material opens it in a new tab) and as text
-    elsewhere;
+  - a **LyrionJS tile on Material Skin's home screen** (Material's `registerCustomAction`,
+    section `pinned`, registered in `postinitPlugin`): one click opens the player in a new
+    tab. Material adds plugin tiles again on every load, so un-pinning it doesn't stick;
+  - an app, *LyrionJS*, in **My Apps** (`Slim::Plugin::OPMLBased` with `is_app`, icon
+    `html/images/icon.png`: a PNG, as Squeezer can't show SVG). LMS builds the Apps entry
+    itself, so it can't carry a link, and no controller can be told to open a link when a page
+    loads (Squeezer's `goNow` only knows Now Playing, the queue and Home). The app's one page,
+    answered by the plugin's own `lyrionjs items` handler, is the address as an item with only
+    a `weblink` (a tap opens the browser on Squeezer) and `parseURLs` (a link that opens a new
+    tab in Material). LMS's feed browser can't produce such an item: it either marks a text
+    item inert (`itemNoAction` + `action none`, which Squeezer won't open) or gives it a browse
+    action (which controllers follow instead of the link);
   - a link in the classic UI's plugin menu and Material Skin's *Extras* (`addPageLinks`, with
-    an icon). Material opens Extras in a frame; the page then offers a tab of its own;
+    the icon). Material opens Extras in a frame; the page then offers a tab of its own;
   - the button on the settings page.
 - The player address: the `pageUrl` setting, or else this server's URL with its IP address
   replaced by its DNS name when reverse DNS gives one that resolves back to it, or else the

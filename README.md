@@ -36,10 +36,10 @@ It adds a new way to play and changes nothing else about LMS.
    LMS treats that folder as repository-managed and uninstalls anything it didn't download.
    Or publish the zip with `dist/repo.xml` and add that repository in *Settings › Plugins*.
 2. Restart LMS.
-3. Open `http://<your-lms>:9000/plugins/LyrionJS/`, or from LMS: the *LyrionJS* app in *Apps*
-   (in Material Skin, then the address, which opens in a new tab; it can be pinned to the home
-   screen), Material's *Extras* menu, the classic web UI's plugin menu, or the button on
-   *Settings › Plugins › LyrionJS*.
+3. Open `http://<your-lms>:9000/plugins/LyrionJS/`, or from LMS: the *LyrionJS* tile on
+   Material Skin's home screen (opens it in a new tab), the *LyrionJS* app in *Apps* (then tap
+   the address; this is the way in on Squeezer and other controllers), Material's *Extras*
+   menu, the classic web UI's plugin menu, or the button on *Settings › Plugins › LyrionJS*.
    Tap or click once so the browser allows sound. LMS's links use the server's DNS name
    (reverse DNS) rather than its IP address, or the address set in Settings.
 
@@ -89,6 +89,7 @@ Never run the live tests against a household server: they create and remove test
 |---|---|
 | `plugin/LyrionJS/` | The LMS plugin: `Plugin.pm`, `Bridge.pm`, `Settings.pm`, `install.xml`, `strings.txt`, `HTML/lyrionjs.html` (built) |
 | `plugin/t/` | The plugin's Perl tests, and protocol vectors shared with the relay's tests |
+| `assets/icon.svg` | The app icon's source; `rsvg-convert -w 128 -h 128 assets/icon.svg -o plugin/LyrionJS/HTML/EN/plugins/LyrionJS/html/images/icon.png` |
 | `src/core/` | Slimproto, the player state machine, FLAC/PCM/MP3 decoding (no DOM, no I/O) |
 | `src/output/` | Web Audio output stage and resampler; media-element output (FLAC verbatim frames → fMP4 → (Managed) Media Source) |
 | `src/host/` | The control socket with resume, and audio streams |
