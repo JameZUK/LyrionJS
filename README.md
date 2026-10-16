@@ -36,9 +36,10 @@ It adds a new way to play and changes nothing else about LMS.
    LMS treats that folder as repository-managed and uninstalls anything it didn't download.
    Or publish the zip with `dist/repo.xml` and add that repository in *Settings › Plugins*.
 2. Restart LMS.
-3. Open `http://<your-lms>:9000/plugins/LyrionJS/`, or from LMS: *My Music › LyrionJS web
-   player* (in Material Skin, then the address, which opens in a new tab), Material's *Extras*
-   menu, the classic web UI's plugin menu, or the button on *Settings › Plugins › LyrionJS*.
+3. Open `http://<your-lms>:9000/plugins/LyrionJS/`, or from LMS: the *LyrionJS* app in *Apps*
+   (in Material Skin, then the address, which opens in a new tab; it can be pinned to the home
+   screen), Material's *Extras* menu, the classic web UI's plugin menu, or the button on
+   *Settings › Plugins › LyrionJS*.
    Tap or click once so the browser allows sound. LMS's links use the server's DNS name
    (reverse DNS) rather than its IP address, or the address set in Settings.
 

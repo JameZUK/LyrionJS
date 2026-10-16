@@ -8,7 +8,7 @@ package Plugins::LyrionJS::Plugin;
 # for LyrionJS players. It changes nothing else.
 
 use strict;
-use base qw(Slim::Plugin::Base);
+use base qw(Slim::Plugin::OPMLBased);
 
 use File::Basename qw(dirname);
 use File::Spec::Functions qw(catfile);
@@ -40,17 +40,20 @@ $prefs->init({
 $prefs->setValidate({ validator => sub { ($_[1] || '') =~ /^(?:auto|webaudio|media)$/ } }, 'defaultOutput');
 $prefs->setValidate({ validator => sub { ($_[1] // '') =~ m{^(?:|https?://[^\s/?#]+(?:/[^\s?#]*)?)$} } }, 'pageUrl');
 
-use constant VERSION  => '0.2.1';
+use constant VERSION  => '0.2.2';
 use constant PAGE_URL => '/plugins/LyrionJS/';
 use constant ICON     => 'plugins/LyrionJS/html/icon.svg';
-use constant MENU_ID  => 'pluginLyrionJS';
 
 my $pageFile = catfile(dirname(__FILE__), 'HTML', 'lyrionjs.html');
 my ($pageBody, $pageMtime) = ('', 0);
 
 sub initPlugin {
 	my $class = shift;
-	$class->SUPER::initPlugin(@_);
+
+	# An app in My Apps (Material Skin's Apps, and other controllers). LMS builds the Apps entry
+	# itself, so it can't carry a link: opening the app lists the player's address, as a link
+	# where the controller can follow one (Material opens it in a new tab).
+	$class->SUPER::initPlugin(feed => \&_appFeed, tag => 'lyrionjs', is_app => 1);
 
 	Slim::Web::Pages->addRawFunction(qr{^/plugins/LyrionJS/(?:index\.html)?$}, \&_page);
 	Slim::Web::Pages->addRawFunction(qr{^/plugins/LyrionJS/config\.json$}, \&_config);
@@ -60,7 +63,6 @@ sub initPlugin {
 		require Plugins::LyrionJS::Settings;
 		Plugins::LyrionJS::Settings->new;
 	}
-	Slim::Control::Request::addDispatch(['lyrionjs', 'info', '_index', '_quantity'], [0, 1, 1, \&_info]);
 	_registerLinks();
 	$prefs->setChange(sub { _registerLinks() }, 'pageUrl');
 
@@ -72,7 +74,6 @@ sub initPlugin {
 
 sub shutdownPlugin {
 	Slim::Control::Request::unsubscribe(\&_newClient);
-	Slim::Control::Jive::deleteMenuItem(MENU_ID);
 	Plugins::LyrionJS::Bridge->shutdown();
 }
 
@@ -114,27 +115,14 @@ sub _reverseName {
 	return $back eq $ip ? lc $name : undef;
 }
 
-# Ways to open the player from LMS. Each uses the absolute address, so a controller opens it as
-# its own page (Material Skin opens an absolute http link in a new tab).
+# Links to the player in LMS's web UIs, with the absolute address: the classic UI's plugin menu,
+# and Material Skin's "Extras" (with this icon; Material opens it in a frame, and the page then
+# offers a tab of its own).
 sub _registerLinks {
+	return unless main::WEBUI;
 	my $url = pageUrl();
-	if (main::WEBUI) {
-		# The classic web UI's plugin menu, and Material Skin's "Extras" (with this icon).
-		Slim::Web::Pages->addPageLinks('plugins', { PLUGIN_LYRIONJS_LINK => $url });
-		Slim::Web::Pages->addPageLinks('icons',   { PLUGIN_LYRIONJS_LINK => ICON });
-	}
-	# An entry in My Music (Material Skin's browse page, and other controllers). It opens the
-	# list from `lyrionjs info`, whose first item opens the player.
-	Slim::Control::Jive::registerPluginMenu([{
-		text    => string('PLUGIN_LYRIONJS_MENU'),
-		id      => MENU_ID,
-		node    => 'myMusic',
-		weight  => 1000,
-		icon    => ICON,
-		weblink => $url,
-		actions => { go => { cmd => ['lyrionjs', 'info'], player => 0 } },
-		window  => { menustyle => 'text' },
-	}]);
+	Slim::Web::Pages->addPageLinks('plugins', { PLUGIN_LYRIONJS_LINK => $url });
+	Slim::Web::Pages->addPageLinks('icons',   { PLUGIN_LYRIONJS_LINK => ICON });
 }
 
 sub _newClient {
@@ -151,24 +139,15 @@ sub _newClient {
 	}
 }
 
-# The menu entry's list: Material Skin builds My Music entries from their actions alone, so the
-# link that opens the player (in a tab of its own) is here; other controllers show the address.
-sub _info {
-	my $request = shift;
+# The app's one page: the player's address. parseURLs: Material shows it as a link that opens
+# a new tab; controllers that can't follow links show the address to type into a browser.
+sub _appFeed {
+	my ($client, $callback) = @_;
 	my $url = pageUrl();
-	my @items = (
-		{ text => cstring($request->client, 'PLUGIN_LYRIONJS_MENU_INFO'), style => 'itemNoAction' },
-		# parseURLs: Material shows the address as a link that opens a new tab.
-		{ text => $url, style => 'itemNoAction', weblink => $url, parseURLs => 1 },
-	);
-	my $i = 0;
-	for my $item (@items) {
-		$request->addResultLoop('item_loop', $i, $_, $item->{$_}) for sort keys %$item;
-		$i++;
-	}
-	$request->addResult('count', $i);
-	$request->addResult('offset', 0);
-	$request->setStatusDone();
+	$callback->({ items => [
+		{ name => cstring($client, 'PLUGIN_LYRIONJS_MENU_INFO'), type => 'text' },
+		{ name => $url, type => 'text', weblink => $url, parseURLs => 1 },
+	] });
 }
 
 # What the page needs to know about this server's LyrionJS settings.

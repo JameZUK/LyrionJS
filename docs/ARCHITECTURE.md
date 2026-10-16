@@ -45,10 +45,11 @@ Perl, inside LMS's event loop, using only LMS's own APIs:
 - `GET /plugins/LyrionJS/config.json`: the plugin's settings the page needs (players on/off,
   default output, diagnostics).
 - Ways in from LMS, all with the absolute player address (below):
-  - a *LyrionJS web player* entry in **My Music** (`registerPluginMenu`, node `myMusic`). Its
-    `go` action lists `lyrionjs info`: the address as a link (`parseURLs`, so Material Skin
-    opens it in a new tab) and, for other controllers, as text. Material builds My Music
-    entries from their actions alone, so the entry's own `weblink` only helps other clients;
+  - an app, *LyrionJS*, in **My Apps** (`Slim::Plugin::OPMLBased` with `is_app`; Material
+    Skin's Apps grid shows it with the plugin's icon). LMS builds the Apps entry itself, so
+    it can't carry a link: the app's one page gives the address, as a link where the
+    controller can follow one (`parseURLs`; Material opens it in a new tab) and as text
+    elsewhere;
   - a link in the classic UI's plugin menu and Material Skin's *Extras* (`addPageLinks`, with
     an icon). Material opens Extras in a frame; the page then offers a tab of its own;
   - the button on the settings page.

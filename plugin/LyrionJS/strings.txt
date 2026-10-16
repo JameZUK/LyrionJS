@@ -7,9 +7,6 @@ PLUGIN_LYRIONJS_DESC
 PLUGIN_LYRIONJS_LINK
 	EN	LyrionJS web player
 
-PLUGIN_LYRIONJS_MENU
-	EN	LyrionJS web player
-
 PLUGIN_LYRIONJS_MENU_INFO
 	EN	Open the player in a new tab here, or this address in a browser on any device on your network:
 
