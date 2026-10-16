@@ -20,7 +20,7 @@ Never run the live tests against a household server: they create and remove test
 
 | Path | What |
 |---|---|
-| `plugin/LyrionJS/` | The LMS plugin: `Plugin.pm`, `Bridge.pm`, `Settings.pm`, `install.xml`, `strings.txt`, `HTML/lyrionjs.html` (built) |
+| `plugin/LyrionJS/` | The LMS plugin: `Plugin.pm`, `Bridge.pm`, `Svg.pm`, `Settings.pm`, `install.xml`, `strings.txt`, `HTML/lyrionjs.html` (built) |
 | `plugin/t/` | The plugin's Perl tests, and protocol vectors shared with the relay's tests |
 | `assets/icon.svg` | The LyrionJS logo: inlined into the page (header, start screens, About, favicon) by `build.py`; `build.py --icons` renders the PNGs LMS and phones use (`html/images/icon.png`, `apple-touch-icon.png`; needs `rsvg-convert`) |
 | `src/core/` | Slimproto, the player state machine, FLAC/PCM/MP3 decoding (no DOM, no I/O) |

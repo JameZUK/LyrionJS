@@ -4,8 +4,8 @@ package Plugins::LyrionJS::Plugin;
 #
 # Everything about the player (Slimproto, decoding, sync, output, UI) runs in the page. This
 # plugin only serves that page, pipes the page's WebSocket to LMS's own Slimproto port (see
-# Bridge.pm), offers links to open the page, a settings page, and asks LMS to proxy streams
-# for LyrionJS players. It changes nothing else.
+# Bridge.pm), passes SVG pictures on to it (Svg.pm), offers links to open the page, a settings
+# page, and asks LMS to proxy streams for LyrionJS players. It changes nothing else.
 
 use strict;
 use base qw(Slim::Plugin::OPMLBased);
@@ -21,6 +21,7 @@ use Slim::Utils::Prefs;
 use Slim::Utils::Strings qw(string cstring);
 
 use Plugins::LyrionJS::Bridge;
+use Plugins::LyrionJS::Svg;
 
 my $log = Slim::Utils::Log->addLogCategory({
 	category     => 'plugin.lyrionjs',
@@ -59,6 +60,7 @@ sub initPlugin {
 	Slim::Web::Pages->addRawFunction(qr{^/plugins/LyrionJS/(?:index\.html)?$}, \&_page);
 	Slim::Web::Pages->addRawFunction(qr{^/plugins/LyrionJS/config\.json$}, \&_config);
 	Plugins::LyrionJS::Bridge->init($log, $prefs);
+	Plugins::LyrionJS::Svg->init($log);
 
 	if (main::WEBUI) {
 		require Plugins::LyrionJS::Settings;

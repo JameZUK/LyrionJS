@@ -44,6 +44,13 @@ Perl, inside LMS's event loop, using only LMS's own APIs:
   - `POST /plugins/LyrionJS/log`: opt-in page diagnostics, written to the LMS log.
 - `GET /plugins/LyrionJS/config.json`: the plugin's settings the page needs (players on/off,
   default output, diagnostics).
+- `GET /plugins/LyrionJS/svg?u=<address>` (`Svg.pm`): SVG pictures, such as radio logos. The page
+  asks LMS's image proxy for every other picture from another host, always at a size: at full
+  size, and always for SVG (which it can't resize), the proxy redirects the browser to the
+  picture's own host, and the page's CSP only loads pictures from LMS. This fetches only http(s)
+  addresses whose path ends in `.svg` (not this machine's), only for LMS's own pages
+  (`Sec-Fetch-Site`), keeps only what is an SVG (up to 512 KB, in LMS's cache for a week), and
+  sends it with a CSP that lets it be nothing but a picture.
 - Ways in from LMS, all with the absolute player address (below):
   - a **LyrionJS tile on Material Skin's home screen** (Material's `registerCustomAction`,
     section `pinned`, registered in `postinitPlugin`): one click opens the player in a new
