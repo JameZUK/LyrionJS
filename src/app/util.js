@@ -77,6 +77,15 @@
     const p = document.createElementNS(ns, 'path'); p.setAttribute('d', ICONS[name] || ICONS.note);
     svg.append(p); return svg;
   }
+  /** The LyrionJS logo (symbol #lj-logo, inlined by build.py from assets/icon.svg). */
+  function logo(cls) {
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('viewBox', '0 0 128 128'); svg.setAttribute('aria-hidden', 'true');
+    svg.setAttribute('class', 'logo-img' + (cls ? ' ' + cls : ''));
+    const use = document.createElementNS(ns, 'use'); use.setAttribute('href', '#lj-logo');
+    svg.append(use); return svg;
+  }
   const btn = (name, label, onclick, cls) => h('button', { class: 'ib' + (cls ? ' ' + cls : ''), title: label, 'aria-label': label, onclick }, icon(name));
 
   function fmtTime(s) {

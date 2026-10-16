@@ -7,15 +7,17 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob: data:; connect-src 'self' ws: wss: http: https:; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="theme-color" content="#0f1115">
 <title>LyrionJS</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='11' fill='%23f2a541'/%3E%3Cpath d='M13 6v7.3a2.5 2.5 0 1 0 1.5 2.2V9h2.5V6z' fill='%231b1406'/%3E%3C/svg%3E">
+<link rel="icon" href="@@LOGO_URI@@">
+<link rel="apple-touch-icon" href="/plugins/LyrionJS/html/images/apple-touch-icon.png">
 <style>
 /*@@CSS@@*/
 </style>
 </head>
 <body>
+/*@@LOGO@@*/
 <header id="top">
   <button id="menuBtn" class="ib" aria-label="Menu" title="Menu"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg></button>
-  <div class="brand"><span class="dot"></span>LyrionJS</div>
+  <div class="brand"><svg class="brand-logo" aria-hidden="true"><use href="#lj-logo"/></svg>LyrionJS</div>
   <div id="serverName"></div>
   <div id="localBadge" class="badge off"></div>
   <div class="spacer"></div>

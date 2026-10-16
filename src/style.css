@@ -36,7 +36,7 @@ button:disabled { cursor: default; }
 .ib.big:hover { background: var(--accent2); color: var(--on-accent); }
 .ib.mid { width: 46px; height: 46px; background: var(--fg); color: var(--bg); }
 .ib.mid:hover { background: var(--accent); color: var(--on-accent); }
-.btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 16px; border-radius: 999px; background: var(--accent); color: var(--on-accent); font-weight: 600; }
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 16px; border-radius: 999px; background: var(--accent); color: var(--on-accent); font-weight: 600; text-decoration: none; }
 .btn .ic { width: 18px; height: 18px; }
 .btn:hover { background: var(--accent2); }
 .btn.ghost { background: var(--bg3); color: var(--fg); }
@@ -48,7 +48,12 @@ button:disabled { cursor: default; }
 /* Top bar */
 #top { grid-area: top; display: flex; align-items: center; gap: 8px; padding: 0 12px; border-bottom: 1px solid var(--line); background: var(--bg2); }
 .brand { font-weight: 800; letter-spacing: .02em; display: flex; align-items: center; gap: 8px; }
-.brand .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 12px var(--accent); }
+.about { display: flex; gap: 16px; align-items: flex-start; }
+.about-logo { width: 64px; height: 64px; flex: none; }
+.about > div { flex: 1; min-width: 0; }
+.about-name { font-weight: 800; font-size: 17px; margin-top: 4px; }
+.about-text { margin: 6px 0 0; color: var(--fg3); font-size: 13px; line-height: 1.45; }
+.brand-logo { width: 28px; height: 28px; flex: none; filter: drop-shadow(0 1px 3px rgba(0,0,0,.35)); }
 #serverName { color: var(--fg3); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .spacer { flex: 1; }
 #menuBtn { display: none; }
@@ -231,7 +236,7 @@ input[type="range"]:disabled { opacity: .4; }
 /* Discovery screen */
 .discover { max-width: 520px; margin: 8vh auto; text-align: center; display: flex; flex-direction: column; gap: 12px; align-items: stretch; }
 .discover h1 { margin: 0; font-size: 34px; }
-.discover .logo .ic { width: 80px; height: 80px; opacity: 1; color: var(--accent); }
+.discover .logo .logo-img { width: 96px; height: 96px; filter: drop-shadow(0 6px 18px rgba(0,0,0,.35)); }
 .discover .list { text-align: left; }
 body:not(.ready) #nav, body:not(.ready) #bar, body:not(.ready) #playerBtn { visibility: hidden; }
 

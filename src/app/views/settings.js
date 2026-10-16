@@ -70,7 +70,10 @@
       dg.addEventListener('change', () => store.set('diag', dg.checked));
       sections.push(h('section', {}, h('h3', { text: 'Appearance' }), h('label', { class: 'setting' }, h('span', { text: 'Theme' }), theme),
         h('label', { class: 'setting' }, h('span', { text: 'Send playback diagnostics to the LMS server log (helps fix problems on phones and tablets)' }), dg)));
-      sections.push(h('section', {}, h('h3', { text: 'About' }), h('p', { class: 't2', text: `LyrionJS ${VERSION}: a Slimproto player and controller for Lyrion Music Server in one page. Keyboard: Space play/pause, ←/→ previous/next, ↑/↓ volume.` })));
+      sections.push(h('section', {}, h('h3', { text: 'About' }),
+        h('div', { class: 'about' }, logo('about-logo'),
+          h('div', {}, h('div', { class: 'about-name', text: `LyrionJS ${VERSION}` }),
+            h('p', { class: 'about-text', text: 'A Slimproto player and controller for Lyrion Music Server in one page. Keyboard: Space play/pause, ←/→ previous/next, ↑/↓ volume.' })))));
       el.replaceChildren(...sections);
     }
     render().catch(fail);

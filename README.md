@@ -89,7 +89,7 @@ Never run the live tests against a household server: they create and remove test
 |---|---|
 | `plugin/LyrionJS/` | The LMS plugin: `Plugin.pm`, `Bridge.pm`, `Settings.pm`, `install.xml`, `strings.txt`, `HTML/lyrionjs.html` (built) |
 | `plugin/t/` | The plugin's Perl tests, and protocol vectors shared with the relay's tests |
-| `assets/icon.svg` | The app icon's source; `rsvg-convert -w 128 -h 128 assets/icon.svg -o plugin/LyrionJS/HTML/EN/plugins/LyrionJS/html/images/icon.png` |
+| `assets/icon.svg` | The LyrionJS logo: inlined into the page (header, start screens, About, favicon) by `build.py`; `build.py --icons` renders the PNGs LMS and phones use (`html/images/icon.png`, `apple-touch-icon.png`; needs `rsvg-convert`) |
 | `src/core/` | Slimproto, the player state machine, FLAC/PCM/MP3 decoding (no DOM, no I/O) |
 | `src/output/` | Web Audio output stage and resampler; media-element output (FLAC verbatim frames → fMP4 → (Managed) Media Source) |
 | `src/host/` | The control socket with resume, and audio streams |

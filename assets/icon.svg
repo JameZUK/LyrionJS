@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
   <!-- LyrionJS app icon: the source of plugin/LyrionJS/HTML/EN/plugins/LyrionJS/html/images/icon.png
-       (rendered with rsvg-convert, see README). A dark tile like other LMS app icons, LyrionJS orange. -->
+       (rendered by build.py with its icons option). A dark tile like other LMS app icons, LyrionJS orange. -->
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#2b2b2b"/>

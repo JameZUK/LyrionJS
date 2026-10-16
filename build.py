@@ -11,8 +11,10 @@ import argparse
 import hashlib
 import os
 import re
+import subprocess
 import sys
 import zipfile
+from urllib.parse import quote
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.join(HERE, "src")
@@ -49,16 +51,50 @@ def read_version():
         return re.search(r"<version>([^<]+)</version>", f.read()).group(1)
 
 
+def logo():
+    """assets/icon.svg as (an inline <svg> defining symbol #lj-logo, a data: URI for the favicon)."""
+    with open(os.path.join(HERE, "assets", "icon.svg"), encoding="utf-8") as f:
+        svg = re.sub(r"<!--.*?-->", "", f.read(), flags=re.S)
+    svg = re.sub(r">\s+<", "><", svg).strip()
+    inner = re.search(r"<svg[^>]*>(.*)</svg>", svg, re.S).group(1)
+    view = re.search(r'viewBox="([^"]+)"', svg).group(1)
+    inner_ids = inner.replace('id="bg"', 'id="lj-logo-bg"').replace("url(#bg)", "url(#lj-logo-bg)")
+    symbol = (f'<svg width="0" height="0" style="position:absolute" aria-hidden="true">'
+              f'<symbol id="lj-logo" viewBox="{view}">{inner_ids}</symbol></svg>')
+    uri = "data:image/svg+xml," + quote(svg, safe=" =:/;,'()")
+    return symbol, uri
+
+
 def page():
     app = ("'use strict';\n(function () {\n  const LJ = window.LJ;\n"
            f"  const VERSION = '{read_version()}';\n" + script(APP) + "\n})();")
     out = read("index.html")
-    for key, text in {"CSS": read("style.css"), "WORKLET": script(WORKLET), "LIB": script(LIB), "APP": app}.items():
+    symbol, uri = logo()
+    out = out.replace("@@LOGO_URI@@", uri.replace('"', "%22"))
+    for key, text in {"CSS": read("style.css"), "LOGO": symbol, "WORKLET": script(WORKLET), "LIB": script(LIB), "APP": app}.items():
         marker = f"/*@@{key}@@*/"
         if marker not in out:
             sys.exit(f"index.html has no {marker}")
         out = out.replace(marker, text.rstrip())
     return out
+
+
+def icons():
+    """The PNG icons LMS and phones use, rendered from assets/icon.svg (needs rsvg-convert)."""
+    images = os.path.join(HERE, "plugin", "LyrionJS", "HTML", "EN", "plugins", "LyrionJS", "html", "images")
+    src = os.path.join(HERE, "assets", "icon.svg")
+    with open(src, encoding="utf-8") as f:
+        svg = f.read()
+    # Home-screen icons: the tile fills the square (the phone rounds the corners itself).
+    full = re.sub(r'<rect x="4" y="4" width="120" height="120" rx="28"', '<rect x="0" y="0" width="128" height="128" rx="0"', svg)
+    full = re.sub(r'<rect x="4.75"[^>]*/>', "", full)
+    tmp = os.path.join(HERE, "dist", "icon-full.svg")
+    os.makedirs(os.path.dirname(tmp), exist_ok=True)
+    with open(tmp, "w", encoding="utf-8") as f:
+        f.write(full)
+    for name, size, source in (("icon.png", 128, src), ("apple-touch-icon.png", 180, tmp)):
+        subprocess.run(["rsvg-convert", "-w", str(size), "-h", str(size), source, "-o", os.path.join(images, name)], check=True)
+        print(f"wrote {os.path.relpath(os.path.join(images, name), HERE)}")
 
 
 def package(url):
@@ -105,6 +141,7 @@ def main():
     ap = argparse.ArgumentParser(description="Build lyrionjs.html; optionally package the plugin")
     ap.add_argument("--package", action="store_true", help="also write dist/LyrionJS-<version>.zip and dist/repo.xml")
     ap.add_argument("--url", default="", help="where the zip will be published (for repo.xml)")
+    ap.add_argument("--icons", action="store_true", help="also render the PNG icons from assets/icon.svg (rsvg-convert)")
     args = ap.parse_args()
     built = page()
     # The page lives in the plugin (served by LMS) and next to the dev relay.
@@ -113,6 +150,8 @@ def main():
         with open(out, "w", encoding="utf-8") as f:
             f.write(built)
         print(f"wrote {os.path.relpath(out, HERE)} ({len(built.encode()) // 1024} KiB)")
+    if args.icons:
+        icons()
     if args.package:
         package(args.url)
 

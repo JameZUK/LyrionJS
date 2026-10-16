@@ -28,7 +28,7 @@
 
   function unreachable(msg) {
     document.getElementById('view').replaceChildren(h('div', { class: 'discover' },
-      h('div', { class: 'logo' }, icon('note', 'huge')), h('h1', { text: 'LyrionJS' }),
+      h('div', { class: 'logo' }, logo()), h('h1', { text: 'LyrionJS' }),
       h('p', { text: 'Lyrion Music Server is not answering at ' + location.host + '.' }),
       h('p', { class: 't2', text: msg || '' }),
       h('button', { class: 'btn', onclick: () => location.reload() }, icon('refresh'), 'Try again')));
@@ -44,7 +44,7 @@
     if (!inFrame) return Promise.resolve();
     return new Promise((resolve) => {
       document.getElementById('view').replaceChildren(h('div', { class: 'discover' },
-        h('div', { class: 'logo' }, icon('note', 'huge')), h('h1', { text: 'LyrionJS' }),
+        h('div', { class: 'logo' }, logo()), h('h1', { text: 'LyrionJS' }),
         h('p', { text: 'LyrionJS plays best in a tab of its own: in this window it stops when the window closes.' }),
         h('div', { class: 'row-btns' },
           h('a', { class: 'btn', href: location.origin + location.pathname, target: '_blank', rel: 'noopener' }, icon('play'), 'Open in a new tab'),
