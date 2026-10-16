@@ -1,0 +1,47 @@
+[% PROCESS settings/header.html %]
+
+	[% WRAPPER setting title="PLUGIN_LYRIONJS_OPEN" desc="" %]
+		[% "PLUGIN_LYRIONJS_OPEN_DESC" | string %]<br/><br/>
+		<a href="/plugins/LyrionJS/" target="_blank" rel="noopener"><input type="button" value="[% "PLUGIN_LYRIONJS_OPEN_BUTTON" | string %]"></a>
+		&nbsp; <code>[% lyrionjsUrl | html %]</code>
+	[% END %]
+
+	[% WRAPPER setting title="PLUGIN_LYRIONJS_ENABLED" desc="" %]
+		<input type="checkbox" name="pref_enabled" id="pref_enabled" value="1" [% IF prefs.pref_enabled %]checked[% END %]>
+		<label for="pref_enabled">[% "PLUGIN_LYRIONJS_ENABLED_DESC" | string %]</label>
+	[% END %]
+
+	[% WRAPPER setting title="PLUGIN_LYRIONJS_PROXY" desc="" %]
+		<input type="checkbox" name="pref_proxyStreams" id="pref_proxyStreams" value="1" [% IF prefs.pref_proxyStreams %]checked[% END %]>
+		<label for="pref_proxyStreams">[% "PLUGIN_LYRIONJS_PROXY_DESC" | string %]</label>
+	[% END %]
+
+	[% WRAPPER setting title="PLUGIN_LYRIONJS_OUTPUT" desc="" %]
+		[% "PLUGIN_LYRIONJS_OUTPUT_DESC" | string %]<br/><br/>
+		<select name="pref_defaultOutput" class="stdedit">
+			[% FOREACH opt = ['auto', 'webaudio', 'media'] %]
+			<option value="[% opt %]" [% IF prefs.pref_defaultOutput == opt %]selected[% END %]>[% "PLUGIN_LYRIONJS_OUTPUT_$opt" | string %]</option>
+			[% END %]
+		</select>
+	[% END %]
+
+	[% WRAPPER setting title="PLUGIN_LYRIONJS_DIAG" desc="" %]
+		<input type="checkbox" name="pref_clientDiagnostics" id="pref_clientDiagnostics" value="1" [% IF prefs.pref_clientDiagnostics %]checked[% END %]>
+		<label for="pref_clientDiagnostics">[% "PLUGIN_LYRIONJS_DIAG_DESC" | string %]</label>
+	[% END %]
+
+	[% WRAPPER setting title="PLUGIN_LYRIONJS_PLAYERS" desc="" %]
+		[% IF lyrionjsPlayers.size %]
+		<table>
+			[% FOREACH p = lyrionjsPlayers %]
+			<tr><td>[% p.name | html %]</td><td>&nbsp;<code>[% p.id | html %]</code></td>
+			<td>&nbsp;[% IF p.connected %][% "PLUGIN_LYRIONJS_CONNECTED" | string %][% ELSE %][% "PLUGIN_LYRIONJS_DISCONNECTED" | string %][% END %]</td></tr>
+			[% END %]
+		</table>
+		[% ELSE %]
+		[% "PLUGIN_LYRIONJS_NO_PLAYERS" | string %]
+		[% END %]
+		<br/>[% "PLUGIN_LYRIONJS_SESSIONS" | string %]: [% lyrionjsSessions | html %]
+	[% END %]
+
+[% PROCESS settings/footer.html %]

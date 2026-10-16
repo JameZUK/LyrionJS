@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark light">
+<meta name="theme-color" content="#0f1115">
+<title>LyrionJS</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='12' cy='12' r='11' fill='%23f2a541'/%3E%3Cpath d='M13 6v7.3a2.5 2.5 0 1 0 1.5 2.2V9h2.5V6z' fill='%231b1406'/%3E%3C/svg%3E">
+<style>
+/*@@CSS@@*/
+</style>
+</head>
+<body>
+<header id="top">
+  <button id="menuBtn" class="ib" aria-label="Menu" title="Menu"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg></button>
+  <div class="brand"><span class="dot"></span>LyrionJS</div>
+  <div id="serverName"></div>
+  <div id="localBadge" class="badge off"></div>
+  <div class="spacer"></div>
+  <button id="playerBtn" aria-label="Choose a player"></button>
+</header>
+<nav id="nav" aria-label="Main"></nav>
+<div id="scrim"></div>
+<main id="view"></main>
+<footer id="bar" aria-label="Player controls"></footer>
+<div id="sheet" hidden></div>
+<button id="unlock" hidden>Click to enable sound in this browser</button>
+<div id="conn" hidden role="status"></div>
+<div id="toast" role="status" aria-live="polite"></div>
+<audio id="lj-audio" playsinline hidden></audio>
+<script id="lj-worklet">
+/*@@WORKLET@@*/
+</script>
+<script id="lj-core">
+/*@@CORE@@*/
+</script>
+<script id="lj-media">
+/*@@MEDIA@@*/
+</script>
+<script id="lj-app">
+/*@@APP@@*/
+</script>
+</body>
+</html>

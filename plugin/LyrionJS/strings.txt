@@ -1,0 +1,71 @@
+PLUGIN_LYRIONJS
+	EN	LyrionJS
+
+PLUGIN_LYRIONJS_DESC
+	EN	Play music in any web browser: the browser becomes a Slimproto player in LMS, with a full controller. Open it at /plugins/LyrionJS/ on this server.
+
+PLUGIN_LYRIONJS_LINK
+	EN	LyrionJS web player
+
+PLUGIN_LYRIONJS_MENU
+	EN	LyrionJS web player
+
+PLUGIN_LYRIONJS_MENU_INFO
+	EN	Open this address in a web browser to play there:
+
+PLUGIN_LYRIONJS_OPEN
+	EN	Web player
+
+PLUGIN_LYRIONJS_OPEN_DESC
+	EN	Open the player in a browser on any device on your network: that browser becomes a player in LMS. Bookmark the address, or add it to the home screen on a phone or tablet.
+
+PLUGIN_LYRIONJS_OPEN_BUTTON
+	EN	Open LyrionJS
+
+PLUGIN_LYRIONJS_ENABLED
+	EN	Browser players
+
+PLUGIN_LYRIONJS_ENABLED_DESC
+	EN	Allow browsers to connect as players. When off, the page still works as a controller for your other players.
+
+PLUGIN_LYRIONJS_PROXY
+	EN	Radio and podcast streams
+
+PLUGIN_LYRIONJS_PROXY_DESC
+	EN	Fetch internet streams through LMS for LyrionJS players (recommended: a browser can't fetch most stations directly). Sets LMS's own "proxied" streaming option on LyrionJS players only, when they connect.
+
+PLUGIN_LYRIONJS_OUTPUT
+	EN	Audio output
+
+PLUGIN_LYRIONJS_OUTPUT_DESC
+	EN	How browsers play, unless a browser has been set otherwise in its own settings. Automatic uses the media element on phones and tablets (keeps playing with the screen locked) and Web Audio elsewhere.
+
+PLUGIN_LYRIONJS_OUTPUT_AUTO
+	EN	Automatic
+
+PLUGIN_LYRIONJS_OUTPUT_WEBAUDIO
+	EN	Web Audio (lowest latency)
+
+PLUGIN_LYRIONJS_OUTPUT_MEDIA
+	EN	Media element (plays with the screen locked)
+
+PLUGIN_LYRIONJS_DIAG
+	EN	Diagnostics
+
+PLUGIN_LYRIONJS_DIAG_DESC
+	EN	Let browser players write playback diagnostics to the LMS log (useful when something doesn't play on a phone or tablet).
+
+PLUGIN_LYRIONJS_PLAYERS
+	EN	LyrionJS players
+
+PLUGIN_LYRIONJS_NO_PLAYERS
+	EN	No browser has connected yet.
+
+PLUGIN_LYRIONJS_CONNECTED
+	EN	connected
+
+PLUGIN_LYRIONJS_DISCONNECTED
+	EN	not connected
+
+PLUGIN_LYRIONJS_SESSIONS
+	EN	Open player connections

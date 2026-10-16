@@ -1,0 +1,11 @@
+# Built: python3 build.py (--package)
+/lyrionjs.html
+/plugin/LyrionJS/HTML/lyrionjs.html
+/dist/
+# Test audio: tests/fixtures/make.sh
+/tests/fixtures/*.wav
+/tests/fixtures/*.flac
+/tests/fixtures/*.raw
+/tests/fixtures/*.mp3
+__pycache__/
+.playwright-mcp/
