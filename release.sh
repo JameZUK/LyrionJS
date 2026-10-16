@@ -3,7 +3,7 @@
 # pointing at that zip as a release asset. The version comes from plugin/LyrionJS/install.xml.
 #   ./release.sh                 then follow the steps it prints
 set -eu
-REPO=${REPO:-JameZUK/LyrianJS}
+REPO=${REPO:-JameZUK/LyrionJS}
 cd "$(dirname "$0")"
 V=$(sed -n 's:.*<version>\(.*\)</version>.*:\1:p' plugin/LyrionJS/install.xml)
 python3 build.py --package --url "https://github.com/$REPO/releases/download/v$V" --link "https://github.com/$REPO"

@@ -30,7 +30,7 @@ It adds a new way to play and changes nothing else about LMS.
 1. In LMS, go to *Settings › Plugins*. At the bottom, under *Additional Repositories*, add:
 
    ```
-   https://raw.githubusercontent.com/JameZUK/LyrianJS/main/repo.xml
+   https://raw.githubusercontent.com/JameZUK/LyrionJS/main/repo.xml
    ```
 
 2. Click *Apply*. Then tick **LyrionJS** in the list, click *Apply* again, and restart LMS when asked.
