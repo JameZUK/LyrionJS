@@ -18,7 +18,7 @@
       sections.push(h('section', {}, h('h3', { text: 'This browser as a player' }),
         h('label', { class: 'setting' }, h('span', { text: 'Play music in this browser (a real Slimproto player in LMS)' }), sw),
         S.local ? h('div', { class: 'kv' },
-          kv('Name', S.local.name, h('button', { class: 'btn ghost sm', onclick: async () => { const n = await prompt2('Name this player', { value: S.local.name, ok: 'Rename' }); if (n) { await S.lms.rpc(S.localId, ['name', n]); S.local.name = n; store.set('name', n); toast('Renamed'); pollPlayers(); render(); } } }, 'Rename')),
+          kv('Name', S.local.name, h('button', { class: 'btn ghost sm', onclick: () => renameLocal().then(render) }, 'Rename')),
           kv('Player ID', S.localId), kv('Connection', snap.connected ? 'Connected (Slimproto via relay)' : 'Connecting…'),
           kv('State', snap.state + (snap.error ? ' — ' + snap.error : '')),
           kv('Audio engine', S.output ? (S.output.engine || 'Web Audio (opens when music starts)') + (S.outputMode === 'webaudio' && !window.isSecureContext ? ' (plain http page)' : '') : '—'),

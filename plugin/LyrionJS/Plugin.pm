@@ -40,7 +40,7 @@ $prefs->init({
 $prefs->setValidate({ validator => sub { ($_[1] || '') =~ /^(?:auto|webaudio|media)$/ } }, 'defaultOutput');
 $prefs->setValidate({ validator => sub { ($_[1] // '') =~ m{^(?:|https?://[^\s/?#]+(?:/[^\s?#]*)?)$} } }, 'pageUrl');
 
-use constant VERSION  => '0.2.5';
+use constant VERSION  => '0.2.6';
 use constant PAGE_URL => '/plugins/LyrionJS/';
 use constant ICON     => 'plugins/LyrionJS/html/images/icon.png';   # PNG: Squeezer can't show SVG
 

@@ -71,6 +71,7 @@
       if (what === 'connected') {
         setTimeout(pollPlayers, 400);
         if (!S.pluginMenus || !S.pluginMenus.length) setTimeout(loadPluginMenus, 800);
+        setTimeout(maybeAskName, 2500);
         // Where the page can't set the volume (iOS), the device's buttons do: hold LMS at 100 %.
         if (S.output.volumeLocked && Math.abs(p.gain - 1) > 0.01) act(['mixer', 'volume', 100], null, S.localId);
       }
@@ -145,6 +146,36 @@
     const need = S.local && S.output && S.output.needsGesture && ['playing', 'waiting', 'loaded', 'paused'].includes(S.local.state);
     el.hidden = !need;
   }
+  // -- naming ---------------------------------------------------------------------
+  /** Lets the person name this browser's player (in LMS, so every controller shows it). */
+  async function renameLocal(first) {
+    if (!S.local) return;
+    const n = await prompt2(first ? 'Give this player a name' : 'Name this player', first
+      ? { value: '', placeholder: 'e.g. Kitchen tablet', ok: 'Save', hint: 'How this browser shows in LMS and your other controllers. Change it any time in Settings.' }
+      : { value: S.local.name, placeholder: 'e.g. Kitchen tablet', ok: 'Save' });
+    store.set('named', true);   // asked once: never ask again by ourselves
+    if (!n || n === S.local.name) return;
+    const name = n.slice(0, 48);
+    try { await S.lms.rpc(S.localId, ['name', name]); } catch (e) { fail(e); return; }
+    S.local.name = name; store.set('name', name);
+    toast(`This player is now “${name}”`);
+    renderLocalBadge();
+    await pollPlayers().catch(() => {});
+    renderPlayerButton();
+  }
+
+  /** The first time this browser is a player with the name it was given automatically, ask. */
+  let askedName = false;
+  async function maybeAskName() {
+    if (askedName || store.get('named', false) || !S.local) return;
+    askedName = true;
+    await pollPlayers().catch(() => {});
+    const known = S.players.find((x) => x.playerid === S.localId);
+    const name = known ? known.name : S.local.name;
+    if (name !== defaultName()) { store.set('named', true); return; }   // already named (perhaps in another controller)
+    if (document.getElementById('sheet').hidden) renameLocal(true);
+  }
+
   function renderLocalBadge() {
     const el = document.getElementById('localBadge');
     if (!el) return;
@@ -153,6 +184,7 @@
     const snap = S.local.snapshot();
     el.className = 'badge ' + (snap.connected ? 'on' : 'warn');
     el.append(snap.connected ? `${S.local.name} · ${snap.state}` : 'Connecting to LMS…');
+    el.title = 'Rename this player';
   }
 
   /** 'webcodecs' (streaming, exact), 'chunks' (decodeAudioData fallback) or '' (no MP3). */

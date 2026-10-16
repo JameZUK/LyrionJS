@@ -59,6 +59,7 @@
     document.getElementById('menuBtn').onclick = () => document.body.classList.toggle('nav-open');
     document.getElementById('scrim').onclick = () => document.body.classList.remove('nav-open');
     document.getElementById('playerBtn').onclick = () => S.lms && playerPicker();
+    document.getElementById('localBadge').onclick = () => renameLocal();
     document.getElementById('unlock').onclick = unlock;
     S.lms = new LMS();
     try {

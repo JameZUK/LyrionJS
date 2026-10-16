@@ -46,12 +46,12 @@
   }
 
   /** A text prompt; resolves the entered text, or null if cancelled or dismissed. */
-  function prompt2(title, { value = '', placeholder = '', ok = 'OK', type = 'text' } = {}) {
+  function prompt2(title, { value = '', placeholder = '', ok = 'OK', type = 'text', hint = '' } = {}) {
     return new Promise((resolve) => {
       const input = h('input', { class: 'field', type, value, placeholder, 'aria-label': title });
       const form = h('form', { class: 'prompt', onsubmit: (e) => { e.preventDefault(); const v = input.value.trim(); closeSheet(true); resolve(v || null); } },
         input, h('div', { class: 'row-btns' }, h('button', { type: 'button', class: 'btn ghost', onclick: () => closeSheet() }, 'Cancel'), h('button', { class: 'btn', type: 'submit' }, ok)));
-      sheet(title, [{ el: form }], { onDismiss: () => resolve(null) });
+      sheet(title, [{ el: form }], { onDismiss: () => resolve(null), sub: hint || undefined });
       setTimeout(() => input.focus(), 50);
     });
   }

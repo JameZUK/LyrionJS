@@ -26,7 +26,8 @@
             btn(st.mode === 'play' ? 'pause' : 'play', 'Play/pause', () => act(st.mode === 'play' ? ['pause', 1] : ['play'], null, p.playerid).then(render)),
             vol,
             h('button', { class: 'btn ghost sm', onclick: () => { setTarget(p.playerid); render(); } }, p.playerid === S.target ? 'Controlling' : 'Control'),
-            h('button', { class: 'btn ghost sm', onclick: () => syncMenu(p.playerid, render) }, icon('sync'), 'Sync…')));
+            h('button', { class: 'btn ghost sm', onclick: () => syncMenu(p.playerid, render) }, icon('sync'), 'Sync…'),
+            isLocal(p.playerid) ? h('button', { class: 'btn ghost sm', onclick: () => renameLocal().then(render) }, icon('edit'), 'Rename…') : null));
       }));
       list.replaceChildren(...(rows.length ? rows : [h('div', { class: 'empty', text: 'No players are connected to the server.' })]));
     }
@@ -57,6 +58,7 @@
       { sep: true },
       S.target ? { label: 'Sync this player…', icon: 'sync', run: () => syncMenu(S.target) } : null,
       S.target ? { label: 'Transfer playback here from…', icon: 'next_up', run: () => transferMenu() } : null,
+      S.local ? { label: 'Rename this browser…', icon: 'edit', run: () => renameLocal() } : null,
       { label: 'All players', icon: 'speaker', run: () => root('players') },
     ]);
   }
