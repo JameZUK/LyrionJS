@@ -100,7 +100,7 @@ def icons():
         print(f"wrote {os.path.relpath(os.path.join(images, name), HERE)}")
 
 
-def package(url):
+def package(url, link=""):
     """dist/LyrionJS-<version>.zip (files at the zip's root, as LMS expects) and dist/repo.xml."""
     plugin = os.path.join(HERE, "plugin", "LyrionJS")
     version = read_version()
@@ -132,7 +132,8 @@ def package(url):
 			<title lang="EN">LyrionJS</title>
 			<desc lang="EN">Play music in any web browser: the browser becomes a Slimproto player in LMS, with a full controller.</desc>
 			<creator>JameZUK</creator>
-			<category>player</category>
+			<category>player</category>{f"""
+			<link>{link}</link>""" if link else ""}
 			<url>{zurl}</url>
 			<sha>{sha}</sha>
 		</plugin>
@@ -148,6 +149,7 @@ def main():
     ap = argparse.ArgumentParser(description="Build lyrionjs.html; optionally package the plugin")
     ap.add_argument("--package", action="store_true", help="also write dist/LyrionJS-<version>.zip and dist/repo.xml")
     ap.add_argument("--url", default="", help="where the zip will be published (for repo.xml)")
+    ap.add_argument("--link", default="", help="the plugin's home page (for repo.xml)")
     ap.add_argument("--icons", action="store_true", help="also render the PNG icons from assets/icon.svg (rsvg-convert)")
     args = ap.parse_args()
     built = page()
@@ -162,7 +164,7 @@ def main():
     if args.package:
         if not args.url:
             sys.exit("--package needs --url: repo.xml must say where LMS can download the zip from")
-        package(args.url)
+        package(args.url, args.link)
 
 
 if __name__ == "__main__":
