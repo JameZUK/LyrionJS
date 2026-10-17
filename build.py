@@ -30,7 +30,7 @@ APP = [
     "app/slimbrowse.js", "app/local.js",
     "app/views/now.js", "app/views/queue.js", "app/views/library.js", "app/views/playlists.js", "app/views/search.js",
     "app/views/players.js", "app/views/settings.js", "app/views/about.js",
-    "app/boot.js",
+    "app/skin.js", "app/boot.js",
 ]
 
 
@@ -74,7 +74,7 @@ def page():
     out = read("index.html")
     symbol, uri = logo()
     out = out.replace("@@LOGO_URI@@", uri)   # quote() leaves no " to end the attribute
-    for key, text in {"CSS": read("style.css"), "LOGO": symbol, "WORKLET": script(WORKLET), "LIB": script(LIB), "APP": app}.items():
+    for key, text in {"CSS": read("style.css") + "\n" + read("skins/material.css"), "LOGO": symbol, "WORKLET": script(WORKLET), "LIB": script(LIB), "APP": app}.items():
         marker = f"/*@@{key}@@*/"
         if marker not in out:
             sys.exit(f"index.html has no {marker}")

@@ -27,6 +27,7 @@ Never run the live tests against a household server: they create and remove test
 | `src/output/` | Web Audio output stage and resampler; media-element output (FLAC verbatim frames → fMP4 → (Managed) Media Source) |
 | `src/host/` | The control socket with resume, and audio streams |
 | `src/app/` | The UI: router, widgets, LMS menus, this browser's player, one file per view |
+| `src/skins/` | Other looks than `style.css`'s, each scoped by `data-skin` (`material.css`: like LMS's Material Skin) |
 | `relay.py` | Dev-only stand-in for the plugin |
 
 ## Making a release

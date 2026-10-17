@@ -8,7 +8,7 @@
     vol.addEventListener('input', () => { touch(); send(); });
     return vol;
   }
-  const showVolume = (vol, v) => { if (!(performance.now() - (vol.touchedAt || -1e9) < 1500)) vol.value = v; };
+  const showVolume = (vol, v) => { if (!(performance.now() - (vol.touchedAt || -1e9) < 1500)) { vol.value = v; fillRange(vol); } };
 
   // Views
   // ---------------------------------------------------------------------------
@@ -41,7 +41,7 @@
         upNext));
     const el = h('div', {}, empty, main);
     const els = { art, title, artist, album, station, quality, seek, tNow, tDur, playBtn, shuf, rep, vol, muteBtn, upNext, empty, main, isSeeking: () => seeking, lastArt: null };
-    const actions = [btn('fav', 'Add to favourites', () => {
+    const actions = [btn('down', 'Close now playing', () => closeNow(), 'np-close'), btn('fav', 'Add to favourites', () => {
       const c = current(); if (!c || !c.url) return toast('Nothing to add');
       act(['favorites', 'add', 'url:' + c.url, 'title:' + (c.stationTitle || c.title)], 'Added to favourites', '');
     }), btn('sleep', 'Sleep timer', sleepMenu), btn('more', 'More', () => {
@@ -85,7 +85,11 @@
     npEls.empty.hidden = has; npEls.main.hidden = !has;
     if (!has) return;
     const artUrl = nowArt(600);
-    if (force || artUrl !== npEls.lastArt) { npEls.lastArt = artUrl; npEls.art.replaceChildren(artEl(artUrl, 'album', 'xl')); }
+    if (force || artUrl !== npEls.lastArt) {
+      npEls.lastArt = artUrl; npEls.art.replaceChildren(artEl(artUrl, 'album', 'xl'));
+      // The cover, blurred, behind full-screen now playing (the Material skin).
+      document.body.style.setProperty('--np-art', artUrl ? `url(${JSON.stringify(artUrl)})` : 'none');
+    }
     npEls.title.textContent = c.title || 'Unknown';
     npEls.artist.textContent = c.artist; npEls.artist.disabled = !c.artistId;
     npEls.album.textContent = c.album; npEls.album.disabled = !c.albumId; npEls.album.hidden = !c.album;
@@ -95,7 +99,7 @@
     npEls.quality.textContent = q;
     const d = c.duration, t = elapsedNow();
     npEls.seek.max = d || 1; npEls.seek.disabled = !d || st.can_seek === 0;
-    if (!npEls.isSeeking()) { npEls.seek.value = t; npEls.tNow.textContent = fmtTime(t); }
+    if (!npEls.isSeeking()) { npEls.seek.value = t; fillRange(npEls.seek); npEls.tNow.textContent = fmtTime(t); }
     npEls.tDur.textContent = d ? fmtTime(d) : (c.remote ? 'Live' : '');
     setIcon(npEls.playBtn, st.mode === 'play' ? 'pause' : 'play', st.mode === 'play' ? 'Pause' : 'Play');
     const sh = +st['playlist shuffle'] || 0, rp = +st['playlist repeat'] || 0;
@@ -116,14 +120,17 @@
     els.title.textContent = has ? c.title : (S.target ? 'Nothing playing' : 'No player');
     els.sub.textContent = has ? [c.artist, c.album].filter(Boolean).join(' · ') : playerName(S.target);
     const art = has ? nowArt(120) : null;
-    if (art !== els.lastArt) { els.lastArt = art; els.art.replaceChildren(artEl(art, 'note', 'sm')); }
+    if (art !== els.lastArt) { els.lastArt = art; els.art.replaceChildren(artEl(art, 'note', 'sm')); coverAccent(art); }
     setIcon(els.play, st && st.mode === 'play' ? 'pause' : 'play', st && st.mode === 'play' ? 'Pause' : 'Play');
     const d = c ? c.duration : 0, t = elapsedNow();
     els.prog.style.width = d ? Math.min(100, t / d * 100) + '%' : '0%';
     els.time.textContent = has ? (d ? `${fmtTime(t)} / ${fmtTime(d)}` : fmtTime(t)) : '';
     const v = Math.abs(+(st && st['mixer volume']) || 0), muted = (+(st && st['mixer volume']) || 0) < 0;
-    showVolume(els.vol, v);
-    setIcon(els.mute, muted ? 'mute' : 'volume', muted ? 'Unmute' : 'Mute'); els.mute.classList.toggle('on', muted);
+    for (const [m, vl] of [[els.mute, els.vol], [els.topMute, els.topVol]]) {
+      showVolume(vl, v);
+      setIcon(m, muted ? 'mute' : 'volume', muted ? 'Unmute' : 'Mute'); m.classList.toggle('on', muted);
+    }
+    els.topPct.textContent = st ? v + '%' : '';
   }
   function buildBar(bar) {
     const art = h('div', { class: 'bar-art' });
@@ -133,15 +140,18 @@
     const time = h('div', { class: 'bar-time' });
     const vol = volumeSlider();
     const mute = btn('volume', 'Mute', () => act(['mixer', 'muting', 'toggle']));
+    // The same in the top bar, where the Material skin has it.
+    const topVol = volumeSlider(), topMute = btn('volume', 'Mute', () => act(['mixer', 'muting', 'toggle'])), topPct = h('span', { class: 'top-pct' });
+    document.getElementById('topVol').replaceChildren(topMute, topVol, topPct);
     const progBar = h('div', { class: 'bar-prog', title: 'Seek' }, prog);
     progBar.addEventListener('click', (e) => {
       const c = current(); if (!c || !c.duration) return;
       const r = progBar.getBoundingClientRect(); act(['time', ((e.clientX - r.left) / r.width * c.duration).toFixed(1)]);
     });
     bar.append(progBar, h('div', { class: 'bar-main' },
-      h('button', { class: 'bar-np', onclick: () => root('now') }, art, h('div', { class: 'meta' }, title, sub)),
+      h('button', { class: 'bar-np', onclick: () => openNow() }, art, h('div', { class: 'meta' }, title, sub)),
       h('div', { class: 'bar-ctrls' }, btn('prev', 'Previous', () => act(['button', 'jump_rew'])), play, btn('next', 'Next', () => act(['playlist', 'index', '+1']))),
-      h('div', { class: 'bar-right' }, time, h('div', { class: 'bar-vol' }, mute, vol), btn('queue', 'Queue', () => root('queue')))));
-    return { art, title, sub, play, prog, time, vol, mute, lastArt: undefined };
+      h('div', { class: 'bar-right' }, time, h('div', { class: 'bar-vol' }, mute, vol), btn('queue', 'Queue', () => (S.shown && S.shown.name === 'queue' ? root(store.get('browseView', 'home')) : root('queue'))))));
+    return { art, title, sub, play, prog, time, vol, mute, topVol, topMute, topPct, lastArt: undefined };
   }
   setInterval(() => { if (S.status && S.status.mode === 'play') { updateBar(); if (npEls) updateNowPlaying(); } renderLocalBadge(); }, 500);

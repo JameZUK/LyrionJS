@@ -5,7 +5,7 @@
   // ---------------------------------------------------------------------------
   const VIEWS = {};
   const NAV = [
-    ['now', 'Now playing', 'note'], ['queue', 'Queue', 'queue'], ['search', 'Search', 'search'], null,
+    ['home', 'Home', 'home'], ['now', 'Now playing', 'note'], ['queue', 'Queue', 'queue'], ['search', 'Search', 'search'], null,
     ['artists', 'Artists', 'artist'], ['albums', 'Albums', 'album'], ['genres', 'Genres', 'genre'], ['years', 'Years', 'year'],
     ['newmusic', 'New music', 'star'], ['folders', 'Music folder', 'folder'], ['playlists', 'Playlists', 'playlist'], 'plugins',
     ['favourites', 'Favourites', 'fav'], ['radio', 'Radio', 'radio'], ['apps', 'Apps', 'apps'], ['random', 'Random mix', 'random'], null,
@@ -63,6 +63,9 @@
     if (p.onShow) p.onShow();
     main.scrollTop = entry.scroll || 0;
     markNav(S.nav[0] && navKey(S.nav[0]));
+    // What the skin lays out around the page: now playing on its own, the queue beside it.
+    document.body.dataset.view = entry.name;
+    updateSide();
     document.title = (p.title ? p.title + ' · ' : '') + 'LyrionJS';
   }
   /** A page may learn its title after it is shown (LMS menus). */
@@ -88,7 +91,7 @@
   function root(name, params) {
     const extra = S.nav.length - 1;
     for (const e of S.nav) dispose(e);
-    if (!params && VIEWS[name]) store.set('view', name);
+    if (!params && VIEWS[name]) { store.set('view', name); if (name !== 'now' && name !== 'queue') store.set('browseView', name); }
     S.nav = [{ name, params }]; S.shown = null;
     show(S.nav[0]);
     // Take the browser history back to the root as well, so Back leaves the app only from there.
@@ -125,4 +128,5 @@
       if (e.page && e.page.perPlayer) { if (e === top) rebuild = true; dispose(e); }
     }
     if (rebuild) show(top);
+    sidePlayerChanged();
   }

@@ -51,6 +51,7 @@
 
   async function boot() {
     applyTheme();
+    applySkin();
     renderNav();
     await leaveFrame();
     document.getElementById('menuBtn').onclick = () => document.body.classList.toggle('nav-open');

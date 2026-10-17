@@ -21,6 +21,7 @@
       }
     }
     for (const kid of kids.flat(Infinity)) if (kid != null && kid !== false) el.append(kid instanceof Node ? kid : String(kid));
+    if (tag === 'input' && el.type === 'range') fillRange(el);
     return el;
   }
 
@@ -86,6 +87,9 @@
     const use = document.createElementNS(ns, 'use'); use.setAttribute('href', '#lj-logo');
     svg.append(use); return svg;
   }
+  /** How far along a slider is, for skins that fill its track (Chrome and Safari can't otherwise). */
+  function fillRange(el) { const lo = +el.min || 0, hi = +el.max || 100; el.style.setProperty('--fill', (hi > lo ? (el.value - lo) / (hi - lo) * 100 : 0) + '%'); }
+  document.addEventListener('input', (e) => { if (e.target.type === 'range') fillRange(e.target); }, true);
   const btn = (name, label, onclick, cls) => h('button', { class: 'ib' + (cls ? ' ' + cls : ''), title: label, 'aria-label': label, onclick }, icon(name));
 
   function fmtTime(s) {

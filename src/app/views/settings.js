@@ -67,18 +67,23 @@
       // Appearance.
       const theme = h('select', { class: 'select', 'aria-label': 'Theme' }, [['auto', 'Match the system'], ['dark', 'Dark'], ['light', 'Light']].map(([v, t]) => h('option', { value: v, text: t, selected: store.get('theme', 'auto') === v })));
       theme.addEventListener('change', () => { store.set('theme', theme.value); applyTheme(); });
+      const sk = h('select', { class: 'select', 'aria-label': 'Skin' }, Object.entries(SKINS).map(([v, t]) => h('option', { value: v, text: t, selected: skin() === v })));
+      sk.addEventListener('change', () => { store.set('skin', sk.value); applySkin(); applyTheme(); render(); });
       // The highlight colour: a swatch each, and one to pick any colour.
-      const cur = store.get('accent', 'orange');
-      const setAccent = (v) => { store.set('accent', v); applyTheme(); for (const b of swatches.children) b.setAttribute('aria-checked', String(b.dataset.v === v || (b.dataset.v === 'custom' && !ACCENTS[v]))); };
+      const cur = accentChoice();
+      const setAccent = (v) => { store.set('accent', v); applyTheme(); for (const b of swatches.children) b.setAttribute('aria-checked', String(b.dataset.v === v || (b.dataset.v === 'custom' && isHex(v)))); };
       const swatch = (v, name, colour) => h('button', { type: 'button', class: 'swatch', role: 'radio', 'aria-checked': String(cur === v), 'aria-label': name, title: name, 'data-v': v, style: { background: colour }, onclick: () => setAccent(v) });
       const pick = h('input', { type: 'color', class: 'swatch-pick', value: isHex(cur) ? cur : '#f2a541', 'aria-label': 'Pick a colour', title: 'Pick a colour' });
       pick.addEventListener('input', () => setAccent(pick.value.toLowerCase()));
-      const custom = h('label', { class: 'swatch custom', role: 'radio', 'aria-checked': String(!ACCENTS[cur]), 'aria-label': 'Your own colour', title: 'Your own colour', 'data-v': 'custom' }, pick);
+      const custom = h('label', { class: 'swatch custom', role: 'radio', 'aria-checked': String(isHex(cur)), 'aria-label': 'Your own colour', title: 'Your own colour', 'data-v': 'custom' }, pick);
       const swatches = h('div', { class: 'swatches', role: 'radiogroup', 'aria-label': 'Highlight colour' },
+        swatch('cover', 'From the cover art (as Material Skin)', 'conic-gradient(from 45deg, #d8a23a, #3f7fd0, #c2306f, #4caf50, #d8a23a)'),
         Object.entries(ACCENTS).map(([v, a]) => swatch(v, a.name, `linear-gradient(135deg, ${a.dark[0]} 50%, ${a.light[0]} 50%)`)), custom);
       const dg = h('input', { type: 'checkbox', class: 'switch', checked: store.get('diag', !!(S.config && S.config.clientDiagnostics)), 'aria-label': 'Send diagnostics' });
       dg.addEventListener('change', () => store.set('diag', dg.checked));
-      sections.push(h('section', {}, h('h3', { text: 'Appearance' }), h('label', { class: 'setting' }, h('span', { text: 'Theme' }), theme),
+      sections.push(h('section', {}, h('h3', { text: 'Appearance' }),
+        h('label', { class: 'setting' }, h('span', { text: 'Skin (Material: laid out like LMS\'s Material Skin)' }), sk),
+        h('label', { class: 'setting' }, h('span', { text: 'Theme' }), theme),
         h('div', { class: 'setting' }, h('span', { text: 'Highlight colour' }), swatches),
         h('label', { class: 'setting' }, h('span', { text: 'Send playback diagnostics to the LMS server log (helps fix problems on phones and tablets)' }), dg)));
       sections.push(h('section', {}, h('h3', { text: 'About' }),

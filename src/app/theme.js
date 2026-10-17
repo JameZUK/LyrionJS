@@ -33,18 +33,68 @@
   }
 
   const isHex = (v) => /^#[0-9a-f]{6}$/i.test(v || '');
-  /** The highlight chosen in Settings: a name from ACCENTS, or a colour as #rrggbb. */
-  function accentShades(v) { return ACCENTS[v] || (isHex(v) ? customAccent(v) : ACCENTS.orange); }
+  // Material Skin's blue: what "from the cover" uses while there's no cover to take a colour from.
+  const MATERIAL_BLUE = { name: 'Blue', dark: ['#82b1ff', '#b6d0ff', '#000'], light: ['#1976d2', '#2f86dc', '#fff'] };
+  /** The highlight chosen in Settings: a name from ACCENTS, a colour as #rrggbb, or 'cover' (with the cover's colour, if known). */
+  function accentShades(v, cover) {
+    if (v === 'cover') return isHex(cover) ? customAccent(cover) : MATERIAL_BLUE;
+    return ACCENTS[v] || (isHex(v) ? customAccent(v) : ACCENTS.orange);
+  }
+
+  /** The cover's colour: the most common clearly coloured shade among its pixels (null for a grey picture). */
+  function dominantColour(px) {
+    const buckets = new Map();
+    let best = null, seen = 0;
+    for (let i = 0; i < px.length; i += 4) {
+      if (px[i + 3] < 128) continue;
+      seen++;
+      const r = px[i], g = px[i + 1], b = px[i + 2], max = Math.max(r, g, b), sat = max - Math.min(r, g, b);
+      if (max < 40 || sat < 40) continue;   // dark, or grey
+      const k = (r >> 5) << 6 | (g >> 5) << 3 | (b >> 5);   // 512 shades
+      const c = buckets.get(k) || { w: 0, n: 0, r: 0, g: 0, b: 0 };
+      c.w += sat / 255; c.n++; c.r += r; c.g += g; c.b += b;
+      buckets.set(k, c);
+      if (!best || c.w > best.w) best = c;
+    }
+    if (!best || best.n < seen * 0.02) return null;   // hardly any colour
+    return rgbHex([best.r / best.n, best.g / best.n, best.b / best.n]);
+  }
+
+  let coverHex = null, coverFor;
+  const accentChoice = () => store.get('accent', skin() === 'material' ? 'cover' : 'orange');
+  /** The cover now shown changed: take its colour, where the highlight comes from the cover. */
+  function coverAccent(url) {
+    if (url === coverFor) return;
+    coverFor = url;
+    const done = (hex) => { if (coverFor !== url) return; const was = coverHex; coverHex = hex; if (accentChoice() === 'cover' && was !== hex) applyTheme(); };
+    if (!url) return done(null);
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const c = document.createElement('canvas'); c.width = c.height = 48;
+        const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(img, 0, 0, 48, 48);
+        done(dominantColour(g.getImageData(0, 0, 48, 48).data));
+      } catch (e) { done(null); }
+    };
+    img.onerror = () => done(null);
+    img.src = url;
+  }
 
   function applyTheme() {
     const t = store.get('theme', 'auto');
     if (t === 'auto') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t;
     // The same selectors as the style sheet's, later in the page: these win.
-    const { dark, light } = accentShades(store.get('accent', 'orange'));
-    const vars = ([a, a2, on]) => `--accent: ${a}; --accent2: ${a2}; --on-accent: ${on};`;
+    const { dark, light } = accentShades(accentChoice(), coverHex);
+    const rgb = (a) => hexRgb(a.length === 4 ? '#' + [...a.slice(1)].map((x) => x + x).join('') : a);
+    const vars = ([a, a2, on]) => `--accent: ${a}; --accent2: ${a2}; --on-accent: ${on}; --accent-rgb: ${rgb(a).join(', ')};`;
+    // Material tints the page with its colour (the deeper shade), more in the toolbars.
+    const tint = (base, t) => rgbHex(mix(hexRgb(base), rgb(light[0]), t));
+    const md = `--bg: ${tint('#212121', 0.15)}; --toolbar: ${tint('#212121', 0.25)}; --menu: ${tint('#303030', 0.15)};`;
+    const ml = `--bg: ${tint('#fafafa', 0.25)}; --toolbar: ${tint('#fafafa', 0.35)}; --menu: ${tint('#fafafa', 0.15)};`;
+    const M = '[data-skin="material"]';
     let el = document.getElementById('lj-theme');
     if (!el) { el = document.createElement('style'); el.id = 'lj-theme'; document.head.append(el); }
-    el.textContent = `:root { ${vars(dark)} }\n`
-      + `@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) { ${vars(light)} } }\n`
-      + `:root[data-theme="light"] { ${vars(light)} }`;
+    el.textContent = `:root { ${vars(dark)} } :root${M} { ${md} }\n`
+      + `@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) { ${vars(light)} } :root${M}:not([data-theme="dark"]) { ${ml} } }\n`
+      + `:root[data-theme="light"] { ${vars(light)} } :root${M}[data-theme="light"] { ${ml} }`;
   }

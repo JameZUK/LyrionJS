@@ -38,3 +38,14 @@ test('a colour picked by hand is lightened for the dark theme and darkened for t
   assert.equal(T.accentShades('#2a5db0').light[0], '#2a5db0');   // already fine on light: as picked
   assert.equal(T.accentShades('#5aa9ff').dark[0], '#5aa9ff');   // and on dark
 });
+
+test('"from the cover" takes the cover\'s colour, or Material\'s blue without one', () => {
+  const T2 = vm.runInNewContext(src + '; ({ accentShades, dominantColour })', {});
+  assert.equal(T2.accentShades('cover').light[0], '#1976d2');
+  assert.equal(T2.accentShades('cover', '#2a5db0').light[0], '#2a5db0');
+  const px = (colours) => new Uint8ClampedArray(colours.flatMap(([r, g, b, n]) => Array.from({ length: n }, () => [r, g, b, 255]).flat()));
+  // Mostly grey with some red, and a little blue: red.
+  assert.match(T2.dominantColour(px([[128, 128, 128, 500], [200, 30, 30, 120], [30, 30, 200, 20]])), /^#c[0-9a-f]1e1e$/);
+  // Grey, black and white only: no colour.
+  assert.equal(T2.dominantColour(px([[128, 128, 128, 500], [0, 0, 0, 100], [255, 255, 255, 100]])), null);
+});

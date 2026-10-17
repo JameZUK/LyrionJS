@@ -260,6 +260,14 @@ body:not(.ready) #nav, body:not(.ready) #bar, body:not(.ready) #playerBtn { visi
 #toast.show { opacity: 1; transform: translate(-50%, 0); }
 #toast.err { background: var(--danger); color: #fff; }
 
+/* What only a skin shows (skins/): the top bar's volume, the queue beside the page, the search button, Home */
+#topVol, #sideBtn, #fab, #side, .np-close, .nav-item[data-view="home"] { display: none; }
+.home { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 14px; }
+.home-item { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; aspect-ratio: 1.2; border-radius: var(--radius); background: var(--bg2); border: 1px solid var(--line); font-weight: 600; padding: 8px; text-align: center; }
+.home-item:hover { border-color: var(--accent); color: var(--accent); }
+.home-item .ic, .home-img { width: 40px; height: 40px; }
+.home-img { border-radius: 8px; object-fit: cover; }
+
 /* Small screens */
 @media (max-width: 860px) {
   :root { --bar: 70px; }
