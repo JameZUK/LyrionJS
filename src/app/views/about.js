@@ -28,6 +28,7 @@
     const facts = h('div', { class: 'kv' },
       kv('Version', 'LyrionJS ' + VERSION),
       kv('What it is', 'A Slimproto player and a remote for Lyrion Music Server, running entirely in this page.'),
+      kv('GitHub', null, h('a', { href: 'https://github.com/JameZUK/LyrionJS', target: '_blank', rel: 'noopener', text: 'JameZUK/LyrionJS' })),
       kv('Server', S.server ? `${S.server.name} (Lyrion ${S.server.version})` : '—'),
       kv('This browser', S.local ? `${S.local.name} · ${S.localId}` : 'A remote control (not a player)'),
       kv('Audio', S.output ? (S.output.engine || 'Web Audio, opens when music starts') : '—'),
