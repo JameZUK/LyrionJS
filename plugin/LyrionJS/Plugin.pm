@@ -48,9 +48,12 @@ use constant ICON     => 'plugins/LyrionJS/html/images/icon.png';   # PNG: Squee
 my $pageFile = catfile(dirname(__FILE__), 'HTML', 'lyrionjs.html');
 my ($pageBody, $pageMtime) = ('', 0);
 my %materialActions;   # section => our entry in Material Skin's custom actions
+my $startedAt = 0;     # when LMS started this plugin: config.json reports it; the page refreshes when it changes
 
 sub initPlugin {
 	my $class = shift;
+
+	$startedAt = time();   # a new value on the page's next poll means LMS restarted
 
 	# An app in My Apps (Material Skin's Apps, and other controllers). LMS builds the Apps entry
 	# itself, so it can't carry a link: opening the app lists the player's address, as a link
@@ -213,6 +216,7 @@ sub _config {
 		defaultOutput     => $prefs->get('defaultOutput') || 'auto',
 		clientDiagnostics => $prefs->get('clientDiagnostics') ? 1 : 0,
 		version           => (Slim::Utils::PluginManager->dataForPlugin(__PACKAGE__) || {})->{version} || '',   # install.xml's
+		started           => $startedAt,
 	});
 	$response->code(200);
 	$response->content_type('application/json');

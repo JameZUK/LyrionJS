@@ -37,9 +37,12 @@
         }
       } else if (isLocal(S.target)) { S.localStatus = S.status; localStatusFor = null; }
       updateMediaSession();
-      setConn(true);
+      // The start time is read when it can change: at the first poll, once LMS answers again, when
+      // the player reconnects (local.js), and once a minute when there is no player connection.
+      if (lmsDown || knownStart == null || (!(S.local && S.local.connected) && Date.now() - startCheckAt >= START_CHECK_MS)) checkStart();
+      refreshIfNeeded();
     } catch (e) {
-      setConn(false, e.message);
+      lmsDown = true; setConn(false);
     } finally {
       polling = false;
     }
@@ -60,9 +63,45 @@
     renderPlayerButton();
   }
 
-  function setConn(ok, msg) {
+  function setConn(ok) {
     const el = document.getElementById('conn');
-    el.hidden = ok; if (!ok) el.textContent = 'Lost contact with the server: ' + (msg || '') + ' — retrying…';
+    el.hidden = ok; if (!ok) el.textContent = 'Lyrion is not reachable — retrying…';
+  }
+
+  // ---------------------------------------------------------------------------
+  // LMS restarts
+  // ---------------------------------------------------------------------------
+  // An open tab keeps the code it loaded, and a restart of LMS brings in the installed plugin's
+  // code. LMS's start time (config.json) changes on every restart. A restart also drops this
+  // browser's player connection (LMS can't resume a session across one). When LMS can't be reached
+  // the page says so, and when it answers again the start time is read before the message goes.
+  // A start time other than the page's own means LMS restarted: the page refreshes once this
+  // browser has stopped playing or buffering, since direct play can carry on through a restart.
+  const START_CHECK_MS = 60 * 1000;
+  let knownStart = null, startCheckAt = 0, startChecking = false, lmsDown = false, pendingRefresh = false, refreshing = false;
+
+  /** Reads LMS's start time. The first reading is the one this page runs under. */
+  async function checkStart() {
+    if (startChecking) return;
+    startChecking = true; startCheckAt = Date.now();
+    try {
+      const r = await fetch('/plugins/LyrionJS/config.json', { cache: 'no-store' });
+      if (!r.ok) throw new Error('LMS answered ' + r.status);
+      const started = (await r.json()).started || 0;   // 0: a server that doesn't report it (the dev relay)
+      if (knownStart == null) knownStart = started;
+      else if (started && started !== knownStart) pendingRefresh = true;
+      if (lmsDown) { lmsDown = false; setConn(true); }
+    } catch (e) { lmsDown = true; setConn(false); }   // unreachable: the next poll tries again
+    finally { startChecking = false; }
+  }
+
+  function refreshIfNeeded() {
+    if (!pendingRefresh || refreshing) return;
+    // Playing or buffering: wait for the music to stop, then refresh. A paused player refreshes.
+    if (S.local && (S.local.state === 'playing' || S.local.state === 'waiting')) return;
+    refreshing = true;
+    toast('Lyrion restarted: refreshing…');
+    setTimeout(() => location.reload(), 1500);
   }
 
   function setTarget(id, auto) {

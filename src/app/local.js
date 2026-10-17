@@ -86,6 +86,7 @@
       if (what === 'state' || what === 'track' || what === 'connected') { pollSoon(150); refreshUnlock(); }
       if (what === 'connected') {
         setTimeout(pollPlayers, 400);
+        checkStart();   // a reconnect after a drop may be a restart of LMS
         if (!S.pluginMenus || !S.pluginMenus.length) setTimeout(loadPluginMenus, 800);
         setTimeout(maybeAskName, 2500);
         // Where the page can't set the volume (iOS), the device's buttons do: hold LMS at 100 %
