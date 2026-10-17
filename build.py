@@ -26,7 +26,7 @@ LIB = [
     "host/transport.js",
 ]
 APP = [
-    "app/util.js", "app/lms.js", "app/state.js", "app/widgets.js", "app/router.js", "app/poll.js", "app/actions.js",
+    "app/util.js", "app/theme.js", "app/lms.js", "app/state.js", "app/widgets.js", "app/router.js", "app/poll.js", "app/actions.js",
     "app/slimbrowse.js", "app/local.js",
     "app/views/now.js", "app/views/queue.js", "app/views/library.js", "app/views/playlists.js", "app/views/search.js",
     "app/views/players.js", "app/views/settings.js", "app/views/about.js",

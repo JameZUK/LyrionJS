@@ -1,11 +1,6 @@
   // ---------------------------------------------------------------------------
-  // Theme, keyboard, boot
+  // Keyboard, boot
   // ---------------------------------------------------------------------------
-  function applyTheme() {
-    const t = store.get('theme', 'auto');
-    if (t === 'auto') delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = t;
-  }
-
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') { closeSheet(); document.body.classList.remove('nav-open'); return; }   // also while typing
     if (!document.body.classList.contains('ready') || !S.lms) return;   // not before the app has started
@@ -18,6 +13,7 @@
     else if (e.key === 'ArrowLeft') act(['button', 'jump_rew']);
     else if (e.key === 'ArrowUp') { e.preventDefault(); act(['mixer', 'volume', '+5']); }
     else if (e.key === 'ArrowDown') { e.preventDefault(); act(['mixer', 'volume', '-5']); }
+    else if (e.key === 'm' || e.key === 'M') act(['mixer', 'muting', 'toggle']);
     else if (e.key === '/') { e.preventDefault(); root('search'); }
   });
   // Browsers only let audio start inside a user gesture. On iPad a touch counts on touchend or

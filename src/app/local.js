@@ -88,8 +88,9 @@
         setTimeout(pollPlayers, 400);
         if (!S.pluginMenus || !S.pluginMenus.length) setTimeout(loadPluginMenus, 800);
         setTimeout(maybeAskName, 2500);
-        // Where the page can't set the volume (iOS), the device's buttons do: hold LMS at 100 %.
-        if (S.output.volumeLocked && Math.abs(p.gain - 1) > 0.01) act(['mixer', 'volume', 100], null, S.localId);
+        // Where the page can't set the volume (iOS), the device's buttons do: hold LMS at 100 %
+        // (but leave it muted).
+        if (S.output.volumeLocked && p.gain > 0.01 && Math.abs(p.gain - 1) > 0.01) act(['mixer', 'volume', 100], null, S.localId);
       }
       renderLocalBadge();
     });

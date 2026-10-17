@@ -182,6 +182,7 @@ input[type="range"]:disabled { opacity: .4; }
 .bar-right { display: flex; align-items: center; justify-content: flex-end; gap: 10px; min-width: 0; }
 .bar-time { color: var(--fg3); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .bar-vol { display: flex; align-items: center; gap: 6px; width: 150px; color: var(--fg2); }
+.bar-vol .ib { width: 32px; height: 32px; }
 .bar-vol .ic { width: 18px; height: 18px; }
 
 /* Sheet (menus and dialogs) */
@@ -231,6 +232,12 @@ input[type="range"]:disabled { opacity: .4; }
 .setting > span { color: var(--fg); flex: 1; min-width: 0; }
 .setting select { max-width: 55%; min-width: 0; text-overflow: ellipsis; }
 .setting .vol { max-width: 220px; }
+.swatches { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.swatch { position: relative; width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--line); flex: none; cursor: pointer; }
+.swatch[aria-checked="true"] { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--fg); }
+.swatch.custom { background: conic-gradient(#f55, #fd5, #5d5, #5dd, #55f, #d5d, #f55); overflow: hidden; }
+.swatch.custom:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
+.swatch-pick { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer; border: 0; padding: 0; }
 .kv-row { display: grid; grid-template-columns: 170px 1fr; gap: 12px; padding: 7px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
 .kv-row .k { color: var(--fg3); }
 .kv-row .v { display: flex; align-items: center; gap: 10px; justify-content: space-between; overflow-wrap: anywhere; }

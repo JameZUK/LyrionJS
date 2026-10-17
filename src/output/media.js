@@ -343,7 +343,8 @@
     setGain(g) { this.gain = g; this._vol(); }
     setMute(m) { this.muted = m; this._vol(); }
     setLevel(l) { this.level = l; this._vol(); }
-    _vol() { this.el.muted = this.muted; if (!this.volumeLocked) this.el.volume = Math.max(0, Math.min(1, this.gain * this.level)); }
+    // Where the volume is the device's (iOS), LMS's mute (a gain of 0) still silences the element.
+    _vol() { this.el.muted = this.muted || (this.volumeLocked && this.gain === 0); if (!this.volumeLocked) this.el.volume = Math.max(0, Math.min(1, this.gain * this.level)); }
 
     // -- what is heard ----------------------------------------------------------
     queuedSeconds() { return Math.max(0, this.writer.end - this.el.currentTime); }

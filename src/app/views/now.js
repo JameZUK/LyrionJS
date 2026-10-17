@@ -103,7 +103,7 @@
     npEls.rep.classList.toggle('on', rp > 0); setIcon(npEls.rep, rp === 1 ? 'repeat1' : 'repeat', REPEAT[rp]);
     const v = Math.abs(+st['mixer volume'] || 0), muted = (+st['mixer volume'] || 0) < 0;
     showVolume(npEls.vol, v);
-    setIcon(npEls.muteBtn, muted ? 'mute' : 'volume', muted ? 'Unmute' : 'Mute');
+    setIcon(npEls.muteBtn, muted ? 'mute' : 'volume', muted ? 'Unmute' : 'Mute'); npEls.muteBtn.classList.toggle('on', muted);
     const idx = +st.playlist_cur_index, total = +st.playlist_tracks || 0;
     npEls.upNext.textContent = total ? `Track ${idx + 1} of ${total}` : '';
   }
@@ -121,8 +121,9 @@
     const d = c ? c.duration : 0, t = elapsedNow();
     els.prog.style.width = d ? Math.min(100, t / d * 100) + '%' : '0%';
     els.time.textContent = has ? (d ? `${fmtTime(t)} / ${fmtTime(d)}` : fmtTime(t)) : '';
-    const v = Math.abs(+(st && st['mixer volume']) || 0);
+    const v = Math.abs(+(st && st['mixer volume']) || 0), muted = (+(st && st['mixer volume']) || 0) < 0;
     showVolume(els.vol, v);
+    setIcon(els.mute, muted ? 'mute' : 'volume', muted ? 'Unmute' : 'Mute'); els.mute.classList.toggle('on', muted);
   }
   function buildBar(bar) {
     const art = h('div', { class: 'bar-art' });
@@ -131,6 +132,7 @@
     const prog = h('div', { class: 'bar-prog-fill' });
     const time = h('div', { class: 'bar-time' });
     const vol = volumeSlider();
+    const mute = btn('volume', 'Mute', () => act(['mixer', 'muting', 'toggle']));
     const progBar = h('div', { class: 'bar-prog', title: 'Seek' }, prog);
     progBar.addEventListener('click', (e) => {
       const c = current(); if (!c || !c.duration) return;
@@ -139,7 +141,7 @@
     bar.append(progBar, h('div', { class: 'bar-main' },
       h('button', { class: 'bar-np', onclick: () => root('now') }, art, h('div', { class: 'meta' }, title, sub)),
       h('div', { class: 'bar-ctrls' }, btn('prev', 'Previous', () => act(['button', 'jump_rew'])), play, btn('next', 'Next', () => act(['playlist', 'index', '+1']))),
-      h('div', { class: 'bar-right' }, time, h('div', { class: 'bar-vol' }, icon('volume'), vol), btn('queue', 'Queue', () => root('queue')))));
-    return { art, title, sub, play, prog, time, vol, lastArt: undefined };
+      h('div', { class: 'bar-right' }, time, h('div', { class: 'bar-vol' }, mute, vol), btn('queue', 'Queue', () => root('queue')))));
+    return { art, title, sub, play, prog, time, vol, mute, lastArt: undefined };
   }
   setInterval(() => { if (S.status && S.status.mode === 'play') { updateBar(); if (npEls) updateNowPlaying(); } renderLocalBadge(); }, 500);

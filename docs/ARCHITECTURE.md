@@ -161,7 +161,7 @@ One self-contained HTML file built from `src/`:
 | `src/core/` | No DOM, no I/O, runs under Node: `bytes.js` (byte queues), `slimproto.js` (framing, HELO, STAT), `decoder.js` (the decoder interface), `flac.js`, `pcm.js`, `mp3.js` (framing, gapless trim, the WebCodecs chunk decoder), `transition.js` (crossfade, fade in and out between the decoders and the output), `player.js` (the player state machine: tracks, sync, reports) |
 | `src/output/` | `worklet.js` (the output stage: sample-accurate starts, sync pauses and skips, volume ramp, position reports; an AudioWorklet on secure pages, main thread elsewhere), `webaudio.js` (the Web Audio output and resampler), `fmp4.js` and `media.js` (PCM → FLAC verbatim frames → fragmented MP4 → `<audio>` via (Managed) Media Source) |
 | `src/host/` | `transport.js`: the control socket with resume, and audio streams over `fetch()`, with the browser APIs injected so it runs under Node too |
-| `src/app/` | The UI, sharing one scope: `util`, `lms` (JSON-RPC), `state`, `widgets`, `router`, `poll`, `actions`, `slimbrowse` (LMS menus), `local` (this browser's player), `views/` (one file per page), `boot` |
+| `src/app/` | The UI, sharing one scope: `util`, `theme` (light or dark, highlight colour), `lms` (JSON-RPC), `state`, `widgets`, `router`, `poll`, `actions`, `slimbrowse` (LMS menus), `local` (this browser's player), `views/` (one file per page), `boot` |
 
 `build.py` inlines them, in that order, into one HTML file: core, output and host as
 `<script id="lj-lib">` modules on a shared `LJ` namespace (the worklet's text is also loaded
