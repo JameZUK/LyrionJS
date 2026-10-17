@@ -213,6 +213,7 @@ sub _config {
 		defaultOutput     => $prefs->get('defaultOutput') || 'auto',
 		clientDiagnostics => $prefs->get('clientDiagnostics') ? 1 : 0,
 		version           => (Slim::Utils::PluginManager->dataForPlugin(__PACKAGE__) || {})->{version} || '',   # install.xml's
+		page              => (stat $pageFile)[9] || 0,   # when the page last changed: a tab open since then reloads
 	});
 	$response->code(200);
 	$response->content_type('application/json');

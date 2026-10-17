@@ -43,7 +43,10 @@ Perl, inside LMS's event loop, using only LMS's own APIs:
   - `GET /plugins/LyrionJS/ws`: the WebSocket below.
   - `POST /plugins/LyrionJS/log`: opt-in page diagnostics, written to the LMS log.
 - `GET /plugins/LyrionJS/config.json`: the plugin's settings the page needs (players on/off,
-  default output, diagnostics).
+  default output, diagnostics), and `page`, when the page file last changed. An open tab
+  (`src/app/update.js`) checks it after losing contact, on being shown again and every ten
+  minutes. When it changes, the tab reloads itself, unless this browser's player isn't stopped or
+  something is being typed. Then it shows a "reload" button and waits.
 - `GET /plugins/LyrionJS/svg?u=<address>` (`Svg.pm`): SVG pictures, such as radio logos. The page
   asks LMS's image proxy for every other picture from another host, always at a size: at full
   size, and always for SVG (which it can't resize), the proxy redirects the browser to the

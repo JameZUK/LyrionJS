@@ -73,6 +73,7 @@
     document.body.classList.add('ready');
     S.localId = macBytes().str;
     try { S.config = serverConfig = await (await fetch('/plugins/LyrionJS/config.json', { cache: 'no-store' })).json(); } catch (e) { S.config = serverConfig = {}; }
+    notePage(S.config);
     if (S.config.enabled === 0) toast('Browser players are switched off in LMS (Settings › Plugins › LyrionJS). This page controls your other players.');
     else claimPlayerThenStart();
     history.replaceState({ d: 1 }, '');

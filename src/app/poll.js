@@ -60,8 +60,12 @@
     renderPlayerButton();
   }
 
+  let connLost = false;
   function setConn(ok, msg) {
     const el = document.getElementById('conn');
+    // Back after losing it: the server may have restarted with a new version of the page.
+    if (ok && connLost) checkUpdate();
+    connLost = !ok;
     el.hidden = ok; if (!ok) el.textContent = 'Lost contact with the server: ' + (msg || '') + ' — retrying…';
   }
 
