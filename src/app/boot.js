@@ -23,12 +23,20 @@
   // Safari 17+: play as media, so the silent switch and Control Centre's silent mode don't mute it.
   try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) { /* older Safari */ }
 
+  // LMS not answering when the page opened (often a restart in progress): ask again now and then,
+  // and start afresh once it answers.
+  const BOOT_RETRY_MS = 5000;
   function unreachable(msg) {
     document.getElementById('view').replaceChildren(h('div', { class: 'discover' },
       h('div', { class: 'logo' }, logo()), h('h1', { text: 'LyrionJS' }),
       h('p', { text: 'Lyrion Music Server is not answering at ' + location.host + '.' }),
-      h('p', { class: 't2', text: msg || '' }),
+      h('p', { class: 't2', text: (msg ? msg.replace(/\.$/, '') + '. ' : '') + 'Trying again every few seconds…' }),
       h('button', { class: 'btn', onclick: () => location.reload() }, icon('refresh'), 'Try again')));
+    const retry = async () => {
+      try { await S.lms.rpc('', ['version', '?'], 5000); location.reload(); }
+      catch (e) { setTimeout(retry, document.hidden ? 6 * BOOT_RETRY_MS : BOOT_RETRY_MS); }
+    };
+    setTimeout(retry, BOOT_RETRY_MS);
   }
 
   /**
