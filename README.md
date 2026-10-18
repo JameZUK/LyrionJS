@@ -28,8 +28,10 @@ It adds a new way to play and changes nothing else about LMS.
 - **Phones and tablets.** It keeps playing with the screen locked, and the lock-screen controls work.
 - **The whole of LMS.** Library, search, queue, playlists, favourites, radio, apps and plugins,
   players and sync, alarms and sleep timer.
-- **Two looks.** Its own, or a Material skin laid out like LMS's Material Skin, with the colour taken
-  from the cover art. Either in light or dark, with a highlight colour of your choice.
+- **Your choice of look.** Its own, or a Material skin laid out like LMS's Material Skin, with the
+  colour taken from the cover art; either in light or dark, with a highlight colour of your choice.
+  Or any web skin installed on LMS (Material Skin, Default, Classic…), itself, with this browser
+  still the player.
 
 ## Install
 

@@ -261,6 +261,14 @@ body:not(.ready) #nav, body:not(.ready) #bar, body:not(.ready) #playerBtn { visi
 #unlock { position: fixed; left: 50%; bottom: calc(var(--bar) + 16px); transform: translateX(-50%); z-index: 40; background: var(--accent); color: var(--on-accent); padding: 12px 20px; border-radius: 999px; font-weight: 700; box-shadow: var(--shadow); }
 #conn { position: fixed; top: calc(var(--top) + 8px); left: 50%; transform: translateX(-50%); z-index: 40; background: var(--danger); color: #fff; padding: 8px 16px; border-radius: 999px; font-size: 13px; max-width: 90vw; }
 #update { position: fixed; top: calc(var(--top) + 8px); left: 50%; transform: translateX(-50%); z-index: 40; background: var(--accent); color: var(--on-accent); padding: 8px 16px; border-radius: 999px; font-size: 13px; font-weight: 700; max-width: 90vw; box-shadow: var(--shadow); }
+/* An LMS skin over the page (skin.js): the frame, and a tab on the edge to reach LyrionJS's own pages */
+#hostBtn { display: none; }
+:root[data-host] #skinframe { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; z-index: 35; background: var(--bg); }
+:root[data-host].host-own #skinframe { display: none; }
+:root[data-host] #hostBtn { display: grid; place-items: center; position: fixed; right: 0; top: 62%; z-index: 38; width: 26px; height: 44px; padding: 0 0 0 3px;
+  border-radius: 10px 0 0 10px; background: rgba(40, 40, 40, .7); box-shadow: 0 1px 4px rgba(0, 0, 0, .3); opacity: .6; transition: opacity .2s; }
+:root[data-host] #hostBtn:hover, :root[data-host] #hostBtn:focus-visible, :root[data-host].host-own #hostBtn { opacity: 1; }
+#hostBtn svg { width: 18px; height: 18px; }
 #toast { position: fixed; left: 50%; bottom: calc(var(--bar) + 16px); transform: translate(-50%, 20px); z-index: 60; background: var(--fg); color: var(--bg); padding: 10px 18px; border-radius: 999px; opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; max-width: 90vw; }
 #toast.show { opacity: 1; transform: translate(-50%, 0); }
 #toast.err { background: var(--danger); color: #fff; }

@@ -58,6 +58,7 @@
     }
     try { const sg = await S.lms.rpc('', ['syncgroups', '?']); S.syncgroups = sg.syncgroups_loop || []; } catch (e) { S.syncgroups = []; }
     renderPlayerButton();
+    updateHost();
   }
 
   let connLost = false;

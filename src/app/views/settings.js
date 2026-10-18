@@ -67,7 +67,12 @@
       // Appearance.
       const theme = h('select', { class: 'select', 'aria-label': 'Theme' }, [['auto', 'Match the system'], ['dark', 'Dark'], ['light', 'Light']].map(([v, t]) => h('option', { value: v, text: t, selected: store.get('theme', 'auto') === v })));
       theme.addEventListener('change', () => { store.set('theme', theme.value); applyTheme(); });
-      const sk = h('select', { class: 'select', 'aria-label': 'Skin' }, Object.entries(SKINS).map(([v, t]) => h('option', { value: v, text: t, selected: skin() === v })));
+      // LyrionJS's own skins, and the server's web skins, shown over the page with LyrionJS still the player.
+      const lmsSkins = Object.entries((S.config && S.config.skins) || {}).sort((a, b) => a[1].localeCompare(b[1]));
+      const curSkin = lmsSkin() ? 'lms:' + lmsSkin() : skin();
+      const opt = (v, t) => h('option', { value: v, text: t, selected: curSkin === v });
+      const sk = h('select', { class: 'select', 'aria-label': 'Skin' }, h('optgroup', { label: 'LyrionJS' }, Object.entries(SKINS).map(([v, t]) => opt(v, t))),
+        lmsSkins.length ? h('optgroup', { label: 'Lyrion Music Server' }, lmsSkins.map(([v, t]) => opt('lms:' + v, t + (v === S.config.skin ? ' (the server\'s)' : '')))) : null);
       sk.addEventListener('change', () => { store.set('skin', sk.value); applySkin(); applyTheme(); render(); });
       // The highlight colour: a swatch each, and one to pick any colour.
       const cur = accentChoice();
@@ -82,7 +87,7 @@
       const dg = h('input', { type: 'checkbox', class: 'switch', checked: store.get('diag', !!(S.config && S.config.clientDiagnostics)), 'aria-label': 'Send diagnostics' });
       dg.addEventListener('change', () => store.set('diag', dg.checked));
       sections.push(h('section', {}, h('h3', { text: 'Appearance' }),
-        h('label', { class: 'setting' }, h('span', { text: 'Skin (Material: laid out like LMS\'s Material Skin)' }), sk),
+        h('label', { class: 'setting' },  h('span', { text: 'Skin (Material: laid out like LMS\'s Material Skin; a Lyrion Music Server skin shows that skin itself, with this browser still the player)' }), sk),
         h('label', { class: 'setting' }, h('span', { text: 'Theme' }), theme),
         h('div', { class: 'setting' }, h('span', { text: 'Highlight colour' }), swatches),
         h('label', { class: 'setting' }, h('span', { text: 'Send playback diagnostics to the LMS server log (helps fix problems on phones and tablets)' }), dg)));

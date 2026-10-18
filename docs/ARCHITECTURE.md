@@ -46,7 +46,13 @@ Perl, inside LMS's event loop, using only LMS's own APIs:
   default output, diagnostics), and `page`, when the page file last changed. An open tab
   (`src/app/update.js`) checks it after losing contact, on being shown again and every ten
   minutes. When it changes, the tab reloads itself, unless this browser's player isn't stopped or
-  something is being typed. Then it shows a "reload" button and waits.
+  something is being typed. Then it shows a "reload" button and waits. Also `skins`, the web
+  skins installed (LMS's own list, as its settings page shows it) and `skin`, the server's.
+  With one of those chosen in Settings (`src/app/skin.js`), the page shows that skin, as served
+  by LMS, in a frame over itself, pointed at this browser's player with `?player=`; the page
+  stays the player, and a tap or key in the frame (same origin) unlocks its sound. A tab on the
+  right edge switches to LyrionJS's own pages and back. A LyrionJS page opened from inside that
+  skin doesn't start a second player: it offers to show the one this tab already is.
 - `GET /plugins/LyrionJS/svg?u=<address>` (`Svg.pm`): SVG pictures, such as radio logos. The page
   asks LMS's image proxy for every other picture from another host, always at a size: at full
   size, and always for SVG (which it can't resize), the proxy redirects the browser to the
@@ -164,7 +170,7 @@ One self-contained HTML file built from `src/`:
 | `src/core/` | No DOM, no I/O, runs under Node: `bytes.js` (byte queues), `slimproto.js` (framing, HELO, STAT), `decoder.js` (the decoder interface), `flac.js`, `pcm.js`, `mp3.js` (framing, gapless trim, the WebCodecs chunk decoder), `transition.js` (crossfade, fade in and out between the decoders and the output), `player.js` (the player state machine: tracks, sync, reports) |
 | `src/output/` | `worklet.js` (the output stage: sample-accurate starts, sync pauses and skips, volume ramp, position reports; an AudioWorklet on secure pages, main thread elsewhere), `webaudio.js` (the Web Audio output and resampler), `fmp4.js` and `media.js` (PCM → FLAC verbatim frames → fragmented MP4 → `<audio>` via (Managed) Media Source) |
 | `src/host/` | `transport.js`: the control socket with resume, and audio streams over `fetch()`, with the browser APIs injected so it runs under Node too |
-| `src/app/` | The UI, sharing one scope: `util`, `theme` (light or dark, highlight colour), `lms` (JSON-RPC), `state`, `widgets`, `router`, `poll`, `actions`, `slimbrowse` (LMS menus), `local` (this browser's player), `views/` (one file per page), `skin` (the Material skin's layout), `boot` |
+| `src/app/` | The UI, sharing one scope: `util`, `theme` (light or dark, highlight colour), `lms` (JSON-RPC), `state`, `widgets`, `router`, `poll`, `actions`, `slimbrowse` (LMS menus), `local` (this browser's player), `views/` (one file per page), `skin` (the Material skin's layout, and an LMS skin over the page), `boot` |
 
 `build.py` inlines them, in that order, into one HTML file: core, output and host as
 `<script id="lj-lib">` modules on a shared `LJ` namespace (the worklet's text is also loaded

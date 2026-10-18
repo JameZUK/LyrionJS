@@ -3,13 +3,64 @@
   // data-skin on the page) and the few pieces of layout it needs, made here.
   // ---------------------------------------------------------------------------
   const SKINS = { lyrionjs: 'LyrionJS', material: 'Material' };
+  /** The page's own layout (LyrionJS's while an LMS skin is shown over it, below). */
   const skin = () => (SKINS[store.get('skin', 'lyrionjs')] ? store.get('skin', 'lyrionjs') : 'lyrionjs');
+  /** The LMS skin shown over the page ('lms:<its folder>' in Settings), if one is. */
+  const lmsSkin = () => { const m = /^lms:([\w.-]+)$/.exec(store.get('skin', '')); return m ? m[1] : null; };
   const narrow = matchMedia('(max-width: 860px)');
 
   function applySkin() {
     document.documentElement.dataset.skin = skin();
     updateSide();
+    updateHost();
   }
+
+  // -- An LMS skin over the page -----------------------------------------------------------------
+  // LyrionJS stays the player (the stream, the sound, the lock screen's controls); the skin
+  // installed on the server is the remote, in a frame over the page, pointed at this browser.
+  // Nothing of the skin is copied: it's whatever version LMS has.
+  const HOST_WAIT_MS = 8000;   // for LMS to know this browser's player, before showing another
+  let hostFrame = null, hostSince = 0;
+  function hostWanted() {
+    const s = lmsSkin(), known = S.config && S.config.skins;
+    return s && S.lms && document.body.classList.contains('ready') && (!known || known[s]) ? s : null;
+  }
+  function updateHost() {
+    const s = hostWanted(), root = document.documentElement;
+    if (!s) {
+      if (hostFrame) { hostFrame.remove(); hostFrame = null; }
+      delete root.dataset.host; root.classList.remove('host-own');
+      return;
+    }
+    root.dataset.host = s;
+    hostSince = hostSince || performance.now();
+    const local = (S.players || []).some((p) => isLocal(p.playerid));
+    if (!local && performance.now() - hostSince < HOST_WAIT_MS) return;   // poll comes back here
+    const src = `/${encodeURIComponent(s)}/?player=${encodeURIComponent(local ? S.localId : S.target || '')}`;
+    if (hostFrame && hostFrame.dataset.skin === s) return;
+    if (!hostFrame) {
+      hostFrame = h('iframe', { id: 'skinframe', title: (S.config.skins && S.config.skins[s]) || s });
+      document.body.append(hostFrame);
+    }
+    hostFrame.dataset.skin = s;
+    hostFrame.src = src;
+  }
+  /** Each page the frame shows: a tap or key in it can start the sound here, and its title is the tab's. */
+  setInterval(() => {
+    if (!hostFrame) return;
+    let d; try { d = hostFrame.contentDocument; } catch (e) { return; }
+    if (!d) return;
+    if (!d.ljHooked) { d.ljHooked = true; for (const ev of ['touchend', 'click', 'keydown']) d.addEventListener(ev, unlock, true); }
+    if (d.title && !document.documentElement.classList.contains('host-own')) document.title = d.title;
+  }, 1000);
+  /** Between the LMS skin and LyrionJS's own pages (its settings, this player's details). */
+  function toggleHostOwn() {
+    const own = document.documentElement.classList.toggle('host-own');
+    const b = document.getElementById('hostBtn');
+    b.title = own ? 'Back to ' + ((hostFrame && hostFrame.title) || 'the skin') : 'LyrionJS';
+    if (own && S.shown) document.title = (S.shown.title ? S.shown.title + ' · ' : '') + 'LyrionJS';
+  }
+  document.getElementById('hostBtn').onclick = toggleHostOwn;
 
   // -- Home: what the menu offers, as a grid (Material's "Browse") -----------------------------
   VIEWS.home = () => {

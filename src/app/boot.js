@@ -47,6 +47,16 @@
     let inFrame = true;
     try { inFrame = window.top !== window; } catch (e) { /* a parent on another origin */ }
     if (!inFrame) return Promise.resolve();
+    // Opened from the LMS skin that this tab's LyrionJS shows: that one is already the player.
+    let host = null;
+    try { host = window.top.LyrionJS && window.top.LyrionJS.showOwn ? window.top.LyrionJS : null; } catch (e) { /* another origin */ }
+    if (host) {
+      document.getElementById('view').replaceChildren(h('div', { class: 'discover' },
+        h('div', { class: 'logo' }, logo()), h('h1', { text: 'LyrionJS' }),
+        h('p', { text: 'This tab is already playing with LyrionJS.' }),
+        h('button', { class: 'btn', onclick: () => host.showOwn() }, 'Show LyrionJS')));
+      return new Promise(() => {});   // and nothing more here
+    }
     return new Promise((resolve) => {
       document.getElementById('view').replaceChildren(h('div', { class: 'discover' },
         h('div', { class: 'logo' }, logo()), h('h1', { text: 'LyrionJS' }),
@@ -88,9 +98,11 @@
     const saved = store.get('view', 'now');
     root(VIEWS[saved] ? saved : 'now');
     try { await pollPlayers(); } catch (e) { setConn(false, e.message); }
+    setTimeout(updateHost, HOST_WAIT_MS);   // no player of its own here: the skin shows another
     if (S.target && S.players.some((p) => p.playerid === S.target)) loadPluginMenus();
     poll();
   }
 
-  window.LyrionJS = { S, VERSION };   // for diagnostics from the browser console
+  // For diagnostics from the browser console; showOwn: for a LyrionJS page opened from the LMS skin shown here.
+  window.LyrionJS = { S, VERSION, showOwn: () => { if (!document.documentElement.classList.contains('host-own')) toggleHostOwn(); } };
   boot();
