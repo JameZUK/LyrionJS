@@ -16,9 +16,6 @@
     const nav = document.getElementById('nav');
     nav.textContent = '';
     const close = () => document.body.classList.remove('nav-open');
-    if (document.documentElement.dataset.host) {   // an LMS skin shown over the page: back to it
-      nav.append(h('button', { class: 'nav-item nav-skin', onclick: () => { close(); leaveOwn(); } }, icon('back'), h('span', { text: hostName() })), h('div', { class: 'nav-sep' }));
-    }
     for (const n of NAV) {
       if (n === 'plugins') {
         nav.append(h('div', { class: 'nav-sep' }));

@@ -58,8 +58,8 @@ Perl, inside LMS's event loop, using only LMS's own APIs:
   inside it (Light and Classic are framesets), and
   a LyrionJS page opened inside the skin anyway (Material's Extras dialog) switches this one over
   rather than start a second player. Those pages' history entries are marked (`own`), so Back
-  from the first of them returns to the skin; so do "Back to <skin>" in the top bar, at the top
-  of the menu and on the About page.
+  from the first of them returns to the skin; so do "Back to <skin>" in the top bar and on the
+  About page, and choosing an LMS skin in Settings.
 - `GET /plugins/LyrionJS/svg?u=<address>` (`Svg.pm`): SVG pictures, such as radio logos. The page
   asks LMS's image proxy for every other picture from another host, always at a size: at full
   size, and always for SVG (which it can't resize), the proxy redirects the browser to the

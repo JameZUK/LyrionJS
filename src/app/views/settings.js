@@ -73,7 +73,11 @@
       const opt = (v, t) => h('option', { value: v, text: t, selected: curSkin === v });
       const sk = h('select', { class: 'select', 'aria-label': 'Skin' }, h('optgroup', { label: 'LyrionJS' }, Object.entries(SKINS).map(([v, t]) => opt(v, t))),
         lmsSkins.length ? h('optgroup', { label: 'Lyrion Music Server' }, lmsSkins.map(([v, t]) => opt('lms:' + v, t + (v === S.config.skin ? ' (the server\'s)' : '')))) : null);
-      sk.addEventListener('change', () => { store.set('skin', sk.value); applySkin(); applyTheme(); render(); });
+      sk.addEventListener('change', () => {
+        store.set('skin', sk.value); applySkin(); applyTheme(); render();
+        // An LMS skin: go to it now (from LyrionJS's own pages over another, or over none).
+        if (lmsSkin()) { leaveOwn(); toast('Showing ' + hostName()); }
+      });
       // The highlight colour: a swatch each, and one to pick any colour.
       const cur = accentChoice();
       const setAccent = (v) => { store.set('accent', v); applyTheme(); for (const b of swatches.children) b.setAttribute('aria-checked', String(b.dataset.v === v || (b.dataset.v === 'custom' && isHex(v)))); };

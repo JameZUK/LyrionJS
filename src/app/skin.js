@@ -19,7 +19,7 @@
   // LyrionJS stays the player (the stream, the sound, the lock screen's controls); the skin
   // installed on the server is the remote, in a frame over the page, pointed at this browser.
   // Nothing of the skin is copied: it's whatever version LMS has. The skin's own ways to
-  // LyrionJS lead to LyrionJS's pages; "Back to <skin>" (top bar, menu, Back) returns.
+  // LyrionJS lead to LyrionJS's pages; "Back to <skin>" (top bar, About page, Back) returns.
   const HOST_WAIT_MS = 8000;   // for LMS to know this browser's player, before showing another
   let hostFrame = null, hostSince = 0;
   function hostWanted() {
@@ -32,10 +32,10 @@
     const s = hostWanted(), root = document.documentElement;
     if (!s) {
       if (hostFrame) { hostFrame.remove(); hostFrame = null; }
-      if (root.dataset.host) { delete root.dataset.host; root.classList.remove('host-own'); renderNav(); }
+      if (root.dataset.host) { delete root.dataset.host; root.classList.remove('host-own'); }
       return;
     }
-    if (root.dataset.host !== s) { root.dataset.host = s; renderNav(); }
+    root.dataset.host = s;
     document.getElementById('skinBtn').lastChild.textContent = hostName();
     hostSince = hostSince || performance.now();
     const local = (S.players || []).some((p) => isLocal(p.playerid));
