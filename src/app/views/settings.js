@@ -91,7 +91,7 @@
       const dg = h('input', { type: 'checkbox', class: 'switch', checked: store.get('diag', !!(S.config && S.config.clientDiagnostics)), 'aria-label': 'Send diagnostics' });
       dg.addEventListener('change', () => store.set('diag', dg.checked));
       sections.push(h('section', {}, h('h3', { text: 'Appearance' }),
-        h('label', { class: 'setting' },  h('span', { text: 'Skin (Material: laid out like LMS\'s Material Skin; a Lyrion Music Server skin shows that skin itself, with this browser still the player)' }), sk),
+        h('label', { class: 'setting' },  h('span', { text: 'Skin: LyrionJS\'s own, or any skin installed on your Lyrion Music Server, with this browser still the player' }), sk),
         h('label', { class: 'setting' }, h('span', { text: 'Theme' }), theme),
         h('div', { class: 'setting' }, h('span', { text: 'Highlight colour' }), swatches),
         h('label', { class: 'setting' }, h('span', { text: 'Send playback diagnostics to the LMS server log (helps fix problems on phones and tablets)' }), dg)));
