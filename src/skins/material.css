@@ -130,12 +130,20 @@
 :root[data-skin="material"] .bar-ctrls { order: -1; gap: 0; }
 :root[data-skin="material"] .bar-ctrls .ib:not(.mid) { width: 38px; height: 38px; }
 :root[data-skin="material"] .bar-ctrls .ib:not(.mid) .ic { width: 36px; height: 36px; }
-:root[data-skin="material"] .ib.mid { background: transparent; color: var(--fg); width: 56px; height: 56px; }
-:root[data-skin="material"] .ib.mid .ic { width: 52px; height: 52px; }
-:root[data-skin="material"] .ib.mid:hover { background: transparent; color: var(--accent); }
+:root[data-skin="material"] .ib.mid { background: var(--fg); color: var(--bg); width: 44px; height: 44px; margin: 0 6px; }
+:root[data-skin="material"] .ib.mid .ic { width: 28px; height: 28px; }
+:root[data-skin="material"] .ib.mid:hover { background: var(--accent); color: var(--on-accent); }
 :root[data-skin="material"] .bar-art .art { width: 65px; height: 65px; border-radius: 5px; }
 :root[data-skin="material"] .bar-np .t1 { font-weight: 400; }
-:root[data-skin="material"] .bar-time { font: 11px "LJ Roboto Mono", "Roboto Mono", ui-monospace, monospace; color: var(--fg2); }
+:root[data-skin="material"] .bar-when { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+:root[data-skin="material"] .bar-time, :root[data-skin="material"] .bar-pos { font: 13px "LJ Roboto Mono", "Roboto Mono", ui-monospace, monospace; color: var(--fg); }
+:root[data-skin="material"] .bar-pos { display: block; }
+/* "by Artist from Album", the words dimmed, as Material's */
+:root[data-skin="material"] .bar-np .t2.track > span { color: var(--fg); }
+:root[data-skin="material"] .bar-np .t2.track > span:not(:empty)::before { color: var(--fg2); white-space: pre; }
+:root[data-skin="material"] .bar-np .t2.track .by:not(:empty)::before { content: "by "; }
+:root[data-skin="material"] .bar-np .t2.track .from:not(:empty)::before { content: "from "; }
+:root[data-skin="material"] .bar-np .t2.track .by:not(:empty) + .from:not(:empty)::before { content: " from "; }
 :root[data-skin="material"] .bar-vol { display: none; }
 
 /* Now playing, full screen: the cover blurred behind, no bottom bar or queue */
@@ -158,13 +166,16 @@
 :root[data-skin="material"] .np-info { align-items: center; text-align: center; }
 :root[data-skin="material"] .np-title { font-size: 250%; font-weight: 500; letter-spacing: .02em; }
 :root[data-skin="material"] .np-sub { font-size: 175%; align-items: center; }
-:root[data-skin="material"] .np-link { color: var(--fg2); }
+:root[data-skin="material"] .np-link { color: var(--fg); text-align: center; }
+:root[data-skin="material"] .np-link:not(:empty)::before { display: inline-block; margin-right: .3em; font-size: 75%; color: var(--fg2); text-decoration: none; }
+:root[data-skin="material"] .np-artist:not(:empty)::before { content: "by"; }
+:root[data-skin="material"] .np-album:not(:empty)::before { content: "from"; }
 :root[data-skin="material"] .np-seek { width: 100%; }
 :root[data-skin="material"] .tm { font: 85% "LJ Roboto Mono", "Roboto Mono", ui-monospace, monospace; color: var(--fg2); }
 :root[data-skin="material"] .np-ctrls .ib:not(.big) { width: 38px; height: 38px; margin: 0 7px; }
-:root[data-skin="material"] .ib.big { background: transparent; color: var(--fg); width: 64px; height: 64px; }
-:root[data-skin="material"] .ib.big .ic { width: 60px; height: 60px; }
-:root[data-skin="material"] .ib.big:hover { background: transparent; color: var(--accent); }
+:root[data-skin="material"] .ib.big { background: var(--fg); color: var(--bg); width: 56px; height: 56px; margin: 0 4px; }
+:root[data-skin="material"] .ib.big .ic { width: 36px; height: 36px; }
+:root[data-skin="material"] .ib.big:hover { background: var(--accent); color: var(--on-accent); }
 @media (max-height: 1100px) { :root[data-skin="material"] .np-title { font-size: 175%; } :root[data-skin="material"] .np-sub { font-size: 125%; } }
 @media (max-height: 850px) { :root[data-skin="material"] .np-title { font-size: 135%; } :root[data-skin="material"] .np-sub { font-size: 100%; } }
 
@@ -202,8 +213,9 @@
   :root[data-skin="material"] .bar-right > :not(.ib) { display: none; }
   :root[data-skin="material"] .bar-right > .ib { display: inline-grid; }
   :root[data-skin="material"] .np-vol { display: flex; }
-  :root[data-skin="material"] .bar-right .ib, :root[data-skin="material"] .ib.mid { width: 40px; height: 40px; }
-  :root[data-skin="material"] .ib.mid .ic { width: 32px; height: 32px; }
+  :root[data-skin="material"] .bar-right .ib { width: 40px; height: 40px; }
+  :root[data-skin="material"] .ib.mid { width: 36px; height: 36px; margin: 0 6px 0 4px; }
+  :root[data-skin="material"] .ib.mid .ic { width: 24px; height: 24px; }
   :root[data-skin="material"] .bar-np { gap: 8px; }
   :root[data-skin="material"] .bar-art .art { width: 54px; height: 54px; }
   :root[data-skin="material"] #view > :not(.view-head) { margin-left: 4px; margin-right: 4px; }
@@ -212,6 +224,9 @@
   :root[data-skin="material"] .np { min-height: 0; padding: 0 12px 16px; gap: 16px; }
   :root[data-skin="material"] .np-title { font-size: 135%; }
   :root[data-skin="material"] .np-sub { font-size: 100%; }
+  :root[data-skin="material"] .home { grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); }
+  :root[data-skin="material"] .home-item { min-height: 150px; padding-top: 16px; }
+  :root[data-skin="material"] .home-item .ic, :root[data-skin="material"] .home-img { width: 64px; height: 64px; }
 }
 @media (max-width: 350px) {
   :root[data-skin="material"] .home, :root[data-skin="material"] .grid { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); }

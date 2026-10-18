@@ -181,6 +181,8 @@ input[type="range"]:disabled { opacity: .4; }
 .bar-ctrls { display: flex; align-items: center; gap: 6px; }
 .bar-right { display: flex; align-items: center; justify-content: flex-end; gap: 10px; min-width: 0; }
 .bar-time { color: var(--fg3); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.bar-np .t2 .by:not(:empty) + .from:not(:empty)::before { content: " · "; }
+.bar-pos { display: none; }
 .bar-vol { display: flex; align-items: center; gap: 6px; width: 150px; color: var(--fg2); }
 .bar-vol .ib { width: 32px; height: 32px; }
 .bar-vol .ic { width: 18px; height: 18px; }
@@ -292,7 +294,7 @@ body:not(.ready) #nav, body:not(.ready) #bar, body:not(.ready) #playerBtn { visi
   .hero-meta h2 { font-size: 24px; }
   .grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px 10px; }
   .bar-main { grid-template-columns: minmax(0, 1fr) auto; }
-  .bar-right .bar-vol, .bar-right .bar-time { display: none; }
+  .bar-right .bar-vol, .bar-right .bar-when { display: none; }
   .bar-ctrls .ib:not(.mid) { display: none; }
   .bar-right { display: none; }
   .kv-row { grid-template-columns: 1fr; gap: 2px; }

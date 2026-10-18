@@ -118,13 +118,18 @@
     const has = !!(c && c.title);
     const els = bar._els || (bar._els = buildBar(bar));
     els.title.textContent = has ? c.title : (S.target ? 'Nothing playing' : 'No player');
-    els.sub.textContent = has ? [c.artist, c.album].filter(Boolean).join(' · ') : playerName(S.target);
+    // Artist and album apart, so a skin can join them its own way (Material: "by … from …").
+    els.by.textContent = has ? c.artist || '' : playerName(S.target);
+    els.from.textContent = has ? c.album || '' : '';
+    els.sub.classList.toggle('track', has);
     const art = has ? nowArt(120) : null;
     if (art !== els.lastArt) { els.lastArt = art; els.art.replaceChildren(artEl(art, 'note', 'sm')); coverAccent(art); }
     setIcon(els.play, st && st.mode === 'play' ? 'pause' : 'play', st && st.mode === 'play' ? 'Pause' : 'Play');
     const d = c ? c.duration : 0, t = elapsedNow();
     els.prog.style.width = d ? Math.min(100, t / d * 100) + '%' : '0%';
     els.time.textContent = has ? (d ? `${fmtTime(t)} / ${fmtTime(d)}` : fmtTime(t)) : '';
+    const total = +(st && st.playlist_tracks) || 0;
+    els.pos.textContent = has && total > 1 ? `${+st.playlist_cur_index + 1} of ${total}` : '';
     const v = Math.abs(+(st && st['mixer volume']) || 0), muted = (+(st && st['mixer volume']) || 0) < 0;
     for (const [m, vl] of [[els.mute, els.vol], [els.topMute, els.topVol]]) {
       showVolume(vl, v);
@@ -134,10 +139,10 @@
   }
   function buildBar(bar) {
     const art = h('div', { class: 'bar-art' });
-    const title = h('div', { class: 't1' }), sub = h('div', { class: 't2' });
+    const title = h('div', { class: 't1' }), by = h('span', { class: 'by' }), from = h('span', { class: 'from' }), sub = h('div', { class: 't2' }, by, from);
     const play = btn('play', 'Play', () => togglePlay(), 'mid');
     const prog = h('div', { class: 'bar-prog-fill' });
-    const time = h('div', { class: 'bar-time' });
+    const time = h('div', { class: 'bar-time' }), pos = h('div', { class: 'bar-pos' });
     const vol = volumeSlider();
     const mute = btn('volume', 'Mute', () => act(['mixer', 'muting', 'toggle']));
     // The same in the top bar, where the Material skin has it.
@@ -151,7 +156,7 @@
     bar.append(progBar, h('div', { class: 'bar-main' },
       h('button', { class: 'bar-np', onclick: () => openNow() }, art, h('div', { class: 'meta' }, title, sub)),
       h('div', { class: 'bar-ctrls' }, btn('prev', 'Previous', () => act(['button', 'jump_rew'])), play, btn('next', 'Next', () => act(['playlist', 'index', '+1']))),
-      h('div', { class: 'bar-right' }, time, h('div', { class: 'bar-vol' }, mute, vol), btn('queue', 'Queue', () => (S.shown && S.shown.name === 'queue' ? root(store.get('browseView', 'home')) : root('queue'))))));
-    return { art, title, sub, play, prog, time, vol, mute, topVol, topMute, topPct, lastArt: undefined };
+      h('div', { class: 'bar-right' }, h('div', { class: 'bar-when' }, time, pos), h('div', { class: 'bar-vol' }, mute, vol), btn('queue', 'Queue', () => (S.shown && S.shown.name === 'queue' ? root(store.get('browseView', 'home')) : root('queue'))))));
+    return { art, title, sub, by, from, play, pos, prog, time, vol, mute, topVol, topMute, topPct, lastArt: undefined };
   }
   setInterval(() => { if (S.status && S.status.mode === 'play') { updateBar(); if (npEls) updateNowPlaying(); } renderLocalBadge(); }, 500);
