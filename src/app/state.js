@@ -4,7 +4,7 @@
   const S = {
     server: null, lms: null, players: [], target: store.get('target', null), status: null, statusAt: 0,
     local: null, localId: null, output: null, outputMode: '', nav: [], syncgroups: [], localStatus: null,
-    serverInfo: null, polling: false, lastPlaylistTs: null, ownsPlayer: false,
+    serverInfo: null, polling: false, lastPlaylistTs: null, lastPlaylistCur: null, ownsPlayer: false,
     chosen: store.get('target', null),   // the player last picked by hand (S.target may stand in for it)
   };
 
