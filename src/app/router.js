@@ -66,10 +66,12 @@
     // What the skin lays out around the page: now playing on its own, the queue beside it.
     document.body.dataset.view = entry.name;
     updateSide();
-    document.title = (p.title ? p.title + ' · ' : '') + 'LyrionJS';
+    document.title = tabTitle(p.title);
   }
+  /** The tab's name for a page: its title and LyrionJS's (once, if the title already has it). */
+  const tabTitle = (t) => (!t ? 'LyrionJS' : /LyrionJS/.test(t) ? t : t + ' · LyrionJS');
   /** A page may learn its title after it is shown (LMS menus). */
-  function setTitle(page, t) { page.title = t; if (page.head) page.head.textContent = t; if (S.shown && S.shown.page === page) document.title = t + ' · LyrionJS'; }
+  function setTitle(page, t) { page.title = t; if (page.head) page.head.textContent = t; if (S.shown && S.shown.page === page) document.title = tabTitle(t); }
 
   function dispose(entry) {
     const p = entry.page;

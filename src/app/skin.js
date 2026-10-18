@@ -58,7 +58,7 @@
    * Each page the frame shows, and the frames inside it (Light and Classic are framesets): a tap
    * or key in it can start the sound here, and the skin's ways to LyrionJS (Material's tile opens
    * a window, an app's link is followed) come to this page instead of opening another. Looked at
-   * often, so a page just loaded is caught soon.
+   * often (below), so a page just loaded is caught soon.
    */
   function hookFrame(w) {
     let d; try { d = w.document; } catch (e) { return; }   // another origin: nothing to do there
@@ -78,8 +78,9 @@
   setInterval(() => {
     if (!hostFrame || !hostFrame.contentWindow) return;
     hookFrame(hostFrame.contentWindow);
-    let d; try { d = hostFrame.contentDocument; } catch (e) { return; }
-    if (d && d.title && !hostOwn()) document.title = d.title;
+    // The tab's name: LyrionJS's, not the skin's (Material's says the player's MAC address).
+    const t = hostName() + ' · LyrionJS';
+    if (!hostOwn() && document.title !== t) document.title = t;
   }, 300);
 
   /** From the LMS skin to LyrionJS's own pages, a step in the history (so Back returns). */
