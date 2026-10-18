@@ -27,8 +27,16 @@ Never run the live tests against a household server: they create and remove test
 | `src/output/` | Web Audio output stage and resampler; media-element output (FLAC verbatim frames → fMP4 → (Managed) Media Source) |
 | `src/host/` | The control socket with resume, and audio streams |
 | `src/app/` | The UI: router, widgets, LMS menus, this browser's player, one file per view |
-| `src/skins/` | Other looks than `style.css`'s, each scoped by `data-skin` (`material.css`: like LMS's Material Skin) |
+| `src/skins/` | Other looks than `style.css`'s, each scoped by `data-skin` (`material.css`: like LMS's Material Skin). An installed LMS skin itself is shown by `src/app/skin.js` |
 | `relay.py` | Dev-only stand-in for the plugin |
+
+## Screenshots
+
+`docs/screenshots/` is taken from the test LMS (`tests/e2e/testlms.sh`) and its made-up library,
+at 1280×800 for desktop and 390×844 for phones, with this browser's player playing at volume 0.
+On that LMS, Material Skin's page never finishes loading (LMS doesn't answer
+`/material/material/backdrops/browse.jpg` when no background is set), so block that address in
+the browser first, or Material's buttons do nothing.
 
 ## Making a release
 

@@ -47,19 +47,26 @@ Perl, inside LMS's event loop, using only LMS's own APIs:
   (`src/app/update.js`) checks it after losing contact, on being shown again and every ten
   minutes. When it changes, the tab reloads itself, unless this browser's player isn't stopped or
   something is being typed. Then it shows a "reload" button and waits. Also `skins`, the web
-  skins installed (LMS's own list, as its settings page shows it) and `skin`, the server's.
-  With one of those chosen in Settings (`src/app/skin.js`), the page shows that skin, as served
-  by LMS, in a frame over itself, pointed at this browser's player with `?player=`; the page
-  stays the player, and a tap or key in the frame (same origin) unlocks its sound. The skin's
-  own ways to LyrionJS lead to LyrionJS's pages in the same tab, at the About page with its
-  recursion joke, Settings one tap away: the page catches the frame's `window.open` (Material's
-  tile) and clicks on links to its own address, whatever host name they use, or to the LyrionJS
-  app's page in a skin (`/<skin>/plugins/lyrionjs/index.html`), in the frame and in every frame
-  inside it (Light and Classic are framesets), and
-  a LyrionJS page opened inside the skin anyway (Material's Extras dialog) switches this one over
-  rather than start a second player. Those pages' history entries are marked (`own`), so Back
-  from the first of them returns to the skin; so do "Back to <skin>" in the top bar and on the
-  About page, and choosing an LMS skin in Settings.
+  skins installed (LMS's own list, as its settings page shows it) and `skin`, the server's: see
+  the next item.
+- **An LMS skin over the page** (`src/app/skin.js`). With one of `config.json`'s `skins` chosen
+  in *Settings › Skin*, the page shows that skin, as LMS serves it, in a frame over itself,
+  pointed at this browser's player with `?player=`. Nothing of the skin is copied or changed. The
+  page stays the player (stream, sound, lock-screen controls), and the skin is only a remote.
+  Both are on the same origin, so the page can look into the frame and every frame inside it
+  (Light and Classic are framesets):
+  - a tap or key there unlocks the page's sound;
+  - the skin's ways to LyrionJS lead to LyrionJS's own pages in the same tab, at the About page
+    (its recursion joke, with Settings one tap away). The page catches the frame's
+    `window.open` (Material's tile) and clicks on links to its own address, whatever host name
+    they use, or to the LyrionJS app's page in a skin (`/<skin>/plugins/lyrionjs/index.html`).
+    A LyrionJS page opened inside the skin anyway (Material's Extras dialog) switches this one
+    over rather than start a second player;
+  - LyrionJS's own pages mark their history entries (`own`), so Back from the first of them
+    returns to the skin; so do the top bar's `← <skin name>`, the button on the About page, and
+    choosing an LMS skin in Settings;
+  - the tab is named `<skin name> · LyrionJS`, not after the skin's page (Material's names the
+    player's MAC address).
 - `GET /plugins/LyrionJS/svg?u=<address>` (`Svg.pm`): SVG pictures, such as radio logos. The page
   asks LMS's image proxy for every other picture from another host, always at a size: at full
   size, and always for SVG (which it can't resize), the proxy redirects the browser to the
