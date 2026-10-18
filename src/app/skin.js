@@ -49,28 +49,37 @@
     hostFrame.src = `/${encodeURIComponent(s)}/?player=${encodeURIComponent(local ? S.localId : S.target || '')}`;
   }
 
-  /** An address of this page (whatever host name the skin's link has). */
-  const isPageUrl = (u) => { try { return /^\/plugins\/LyrionJS\/(?:index\.html)?$/.test(new URL(u, location.href).pathname); } catch (e) { return false; } };
   /**
-   * Each page the frame shows: a tap or key in it can start the sound here, and the skin's ways
-   * to LyrionJS (Material's tile opens a window, an app's link is followed) come to this page
-   * instead of opening another. Looked at often, so a page just loaded is caught soon.
+   * A way to LyrionJS: this page, whatever host name the skin's link has, or the LyrionJS app's
+   * own page in a skin (Light and Classic: /<skin>/plugins/lyrionjs/index.html).
    */
-  setInterval(() => {
-    if (!hostFrame) return;
-    let d, w; try { d = hostFrame.contentDocument; w = hostFrame.contentWindow; } catch (e) { return; }
-    if (!d || !w) return;
+  const isPageUrl = (u) => { try { return /^(?:\/[^/]+)?\/plugins\/lyrionjs\/(?:index\.html)?$/i.test(new URL(u, location.href).pathname); } catch (e) { return false; } };
+  /**
+   * Each page the frame shows, and the frames inside it (Light and Classic are framesets): a tap
+   * or key in it can start the sound here, and the skin's ways to LyrionJS (Material's tile opens
+   * a window, an app's link is followed) come to this page instead of opening another. Looked at
+   * often, so a page just loaded is caught soon.
+   */
+  function hookFrame(w) {
+    let d; try { d = w.document; } catch (e) { return; }   // another origin: nothing to do there
+    if (!d) return;
     if (!d.ljHooked) {
       d.ljHooked = true;
       for (const ev of ['touchend', 'click', 'keydown']) d.addEventListener(ev, unlock, true);
       d.addEventListener('click', (e) => {
         const a = e.target.closest && e.target.closest('a[href]');
-        if (a && isPageUrl(a.getAttribute('href'))) { e.preventDefault(); e.stopPropagation(); enterOwn(); }
+        if (a && isPageUrl(a.href)) { e.preventDefault(); e.stopPropagation(); enterOwn(); }
       }, true);
       const open = w.open;
       w.open = function (u, ...rest) { if (u && isPageUrl(String(u))) { enterOwn(); return null; } return open.call(this, u, ...rest); };
     }
-    if (d.title && !hostOwn()) document.title = d.title;
+    for (let i = 0; i < w.frames.length; i++) hookFrame(w.frames[i]);
+  }
+  setInterval(() => {
+    if (!hostFrame || !hostFrame.contentWindow) return;
+    hookFrame(hostFrame.contentWindow);
+    let d; try { d = hostFrame.contentDocument; } catch (e) { return; }
+    if (d && d.title && !hostOwn()) document.title = d.title;
   }, 300);
 
   /** From the LMS skin to LyrionJS's own pages, a step in the history (so Back returns). */

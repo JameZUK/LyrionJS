@@ -53,7 +53,9 @@ Perl, inside LMS's event loop, using only LMS's own APIs:
   stays the player, and a tap or key in the frame (same origin) unlocks its sound. The skin's
   own ways to LyrionJS lead to LyrionJS's pages in the same tab, at the About page with its
   recursion joke, Settings one tap away: the page catches the frame's `window.open` (Material's
-  tile) and clicks on links (an app's link) to its own address, whatever host name they use, and
+  tile) and clicks on links to its own address, whatever host name they use, or to the LyrionJS
+  app's page in a skin (`/<skin>/plugins/lyrionjs/index.html`), in the frame and in every frame
+  inside it (Light and Classic are framesets), and
   a LyrionJS page opened inside the skin anyway (Material's Extras dialog) switches this one over
   rather than start a second player. Those pages' history entries are marked (`own`), so Back
   from the first of them returns to the skin; so do "Back to <skin>" in the top bar, at the top
