@@ -16,6 +16,9 @@
     const nav = document.getElementById('nav');
     nav.textContent = '';
     const close = () => document.body.classList.remove('nav-open');
+    if (document.documentElement.dataset.host) {   // an LMS skin shown over the page: back to it
+      nav.append(h('button', { class: 'nav-item nav-skin', onclick: () => { close(); leaveOwn(); } }, icon('back'), h('span', { text: hostName() })), h('div', { class: 'nav-sep' }));
+    }
     for (const n of NAV) {
       if (n === 'plugins') {
         nav.append(h('div', { class: 'nav-sep' }));
@@ -80,11 +83,13 @@
     entry.page = null;
   }
 
+  /** A history entry's state: how deep, and whether it's LyrionJS's own pages over an LMS skin. */
+  const navState = (d) => (document.documentElement.classList.contains('host-own') ? { d, own: 1 } : { d });
   function saveScroll() { const top = S.nav[S.nav.length - 1]; if (top) top.scroll = document.getElementById('view').scrollTop; }
   function push(name, params) {
     saveScroll();
     S.nav.push({ name, params });
-    history.pushState({ d: S.nav.length }, '');
+    history.pushState(navState(S.nav.length), '');
     show(S.nav[S.nav.length - 1]);
   }
   let ignorePop = 0;
@@ -106,11 +111,13 @@
     // Back leaves whatever was open over the page: a menu or dialog belongs to the page left.
     closeSheet();
     document.body.classList.remove('nav-open');
-    if (ignorePop) { ignorePop--; history.replaceState({ d: 1 }, ''); return; }
+    if (ignorePop) { ignorePop--; history.replaceState(navState(1), ''); return; }
+    // Back past LyrionJS's first page, over an LMS skin: the skin again.
+    if (document.documentElement.classList.contains('host-own') && !(e.state && e.state.own)) document.documentElement.classList.remove('host-own');
     const d = (e.state && e.state.d) || 1;
     if (d >= S.nav.length) {
       // Forward to a view we have already left: there's nothing to go forward to.
-      history.replaceState({ d: S.nav.length }, '');
+      history.replaceState(navState(S.nav.length), '');
       return;
     }
     while (S.nav.length > d) dispose(S.nav.pop());

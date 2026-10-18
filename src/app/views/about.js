@@ -43,7 +43,9 @@
       quip,
       h('section', { class: 'about-facts' }, h('h3', { text: 'About' }), facts),
       h('div', { class: 'row-btns about-btns' },
-        h('button', { class: 'btn', onclick: () => root('now') }, icon('note'), 'Take me back to the music')));
+        h('button', { class: 'btn', onclick: () => root('now') }, icon('note'), 'Take me back to the music'),
+        h('button', { class: 'btn ghost', onclick: () => root('settings') }, icon('settings'), 'Settings'),
+        document.documentElement.dataset.host ? h('button', { class: 'btn ghost', onclick: () => leaveOwn() }, icon('back'), 'Back to ' + hostName()) : null));
     return { title: 'About LyrionJS', el };
   };
 

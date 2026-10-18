@@ -51,6 +51,7 @@
     let host = null;
     try { host = window.top.LyrionJS && window.top.LyrionJS.showOwn ? window.top.LyrionJS : null; } catch (e) { /* another origin */ }
     if (host) {
+      host.showOwn();   // Material's Extras opens it in a dialog: show LyrionJS's own pages out there
       document.getElementById('view').replaceChildren(h('div', { class: 'discover' },
         h('div', { class: 'logo' }, logo()), h('h1', { text: 'LyrionJS' }),
         h('p', { text: 'This tab is already playing with LyrionJS.' }),
@@ -104,5 +105,5 @@
   }
 
   // For diagnostics from the browser console; showOwn: for a LyrionJS page opened from the LMS skin shown here.
-  window.LyrionJS = { S, VERSION, showOwn: () => { if (!document.documentElement.classList.contains('host-own')) toggleHostOwn(); } };
+  window.LyrionJS = { S, VERSION, showOwn: () => enterOwn() };
   boot();
