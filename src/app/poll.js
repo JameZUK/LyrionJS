@@ -47,15 +47,23 @@
     pollTimer = setTimeout(poll, again ? 50 : (document.hidden ? 5000 : 1000));
   }
 
+  /**
+   * Which player to control, given LMS's players: the one picked by hand (by default, this
+   * browser's), as soon as LMS has it; meanwhile the one controlled, if LMS still has it; else
+   * this browser's, or any. null: no change. A stand-in is never remembered, so a page opened
+   * before LMS knows this browser's player again goes back to it as soon as it does.
+   */
+  function pickTarget(ids, current, chosen, localId) {
+    const has = (id) => !!id && ids.includes(id);
+    const want = has(chosen || localId) ? chosen || localId : has(current) ? current : has(localId) ? localId : ids[0] || null;
+    return want && want !== current ? want : null;
+  }
+
   async function pollPlayers() {
     const r = await S.lms.rpc('', ['players', 0, 100]);
-    S.players = (r.players_loop || []).filter((p) => +p.connected || isLocal(p.playerid) || p.playerid === S.target);
-    // First run: control this browser's own player once LMS has it.
-    if (S.autoTarget && S.players.some((p) => isLocal(p.playerid))) { S.autoTarget = false; if (!isLocal(S.target)) setTarget(S.localId, true); }
-    if (!S.target || !S.players.some((p) => p.playerid === S.target)) {
-      const want = S.players.find((p) => isLocal(p.playerid)) || S.players[0];
-      if (want && want.playerid !== S.target) setTarget(want.playerid, true);
-    }
+    S.players = (r.players_loop || []).filter((p) => +p.connected || isLocal(p.playerid) || p.playerid === S.target || p.playerid === S.chosen);
+    const next = pickTarget(S.players.map((p) => p.playerid), S.target, S.chosen, S.localId);
+    if (next) setTarget(next, true);
     try { const sg = await S.lms.rpc('', ['syncgroups', '?']); S.syncgroups = sg.syncgroups_loop || []; } catch (e) { S.syncgroups = []; }
     renderPlayerButton();
     updateHost();
@@ -70,10 +78,11 @@
     el.hidden = ok; if (!ok) el.textContent = 'Lost contact with the server: ' + (msg || '') + ' — retrying…';
   }
 
+  /** Control this player. auto: a stand-in chosen by the page, not remembered as the choice. */
   function setTarget(id, auto) {
-    if (!auto) S.autoTarget = false;
+    if (!auto) { S.chosen = id; store.set('target', id); }
     const changed = id !== S.target;
-    S.target = id; store.set('target', id); S.status = null; S.lastPlaylistTs = null;
+    S.target = id; S.status = null; S.lastPlaylistTs = null;
     renderPlayerButton(); updateNowPlaying(); pollSoon(10);
     loadPluginMenus();
     if (changed) playerChanged();
