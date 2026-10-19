@@ -111,9 +111,9 @@
         continue;
       }
       if (!n || ['home', 'now', 'queue', 'search'].includes(n[0])) continue;   // search: the button over the page
-      tiles.push(h('button', { class: 'home-item', onclick: () => push(n[0]) }, icon(n[2]), h('span', { text: n[1] })));
+      tiles.push(h('button', { class: 'home-item', onclick: () => push(n[0]) }, icon(n[2]), h('span', { text: tr(n[1]) })));
     }
-    return { title: 'Home', el: h('div', { class: 'home' }, tiles) };
+    return { title: tr('Home'), el: h('div', { class: 'home' }, tiles) };
   };
 
   // -- Now playing over the page (Material's expanded now playing) -------------------------------
@@ -139,7 +139,7 @@
     if (sb) sb.setAttribute('aria-pressed', String(skin() === 'material' && store.get('sideQueue', false)));
     if (want && !sidePage) {
       sidePage = VIEWS.queue();
-      el.replaceChildren(h('div', { class: 'view-head side-head' }, h('h2', { text: 'Queue' }), h('div', { class: 'view-actions' }, sidePage.actions || [])), sidePage.el);
+      el.replaceChildren(h('div', { class: 'view-head side-head' }, h('h2', { text: tr('Queue') }), h('div', { class: 'view-actions' }, sidePage.actions || [])), sidePage.el);
       if (sidePage.onShow) sidePage.onShow();
     }
     else if (!want && sidePage) closeSide();

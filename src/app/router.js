@@ -5,11 +5,11 @@
   // ---------------------------------------------------------------------------
   const VIEWS = {};
   const NAV = [
-    ['home', 'Home', 'home'], ['now', 'Now playing', 'note'], ['queue', 'Queue', 'queue'], ['search', 'Search', 'search'], null,
-    ['artists', 'Artists', 'artist'], ['albums', 'Albums', 'album'], ['genres', 'Genres', 'genre'], ['years', 'Years', 'year'],
-    ['newmusic', 'New music', 'star'], ['folders', 'Music folder', 'folder'], ['playlists', 'Playlists', 'playlist'], 'plugins',
-    ['favourites', 'Favourites', 'fav'], ['radio', 'Radio', 'radio'], ['apps', 'Apps', 'apps'], ['random', 'Random mix', 'random'], null,
-    ['players', 'Players', 'speaker'], ['alarms', 'Alarms', 'alarm'], ['settings', 'Settings', 'settings'],
+    ['home', N_('Home'), 'home'], ['now', N_('Now playing'), 'note'], ['queue', N_('Queue'), 'queue'], ['search', N_('Search'), 'search'], null,
+    ['artists', N_('Artists'), 'artist'], ['albums', N_('Albums'), 'album'], ['genres', N_('Genres'), 'genre'], ['years', N_('Years'), 'year'],
+    ['newmusic', N_('New music'), 'star'], ['folders', N_('Music folder'), 'folder'], ['playlists', N_('Playlists'), 'playlist'], 'plugins',
+    ['favourites', N_('Favourites'), 'fav'], ['radio', N_('Radio'), 'radio'], ['apps', N_('Apps'), 'apps'], ['random', N_('Random mix'), 'random'], null,
+    ['players', N_('Players'), 'speaker'], ['alarms', N_('Alarms'), 'alarm'], ['settings', N_('Settings'), 'settings'],
   ];
 
   function renderNav() {
@@ -32,7 +32,7 @@
         continue;
       }
       if (!n) { nav.append(h('div', { class: 'nav-sep' })); continue; }
-      nav.append(h('button', { class: 'nav-item', 'data-view': n[0], onclick: () => { root(n[0]); close(); } }, icon(n[2]), h('span', { text: n[1] })));
+      nav.append(h('button', { class: 'nav-item', 'data-view': n[0], onclick: () => { root(n[0]); close(); } }, icon(n[2]), h('span', { text: tr(n[1]) })));
     }
     if (S.nav[0]) markNav(navKey(S.nav[0]));
   }
@@ -45,7 +45,7 @@
       return make(entry.params || {});
     } catch (e) {
       console.error(e);
-      return { title: 'Something went wrong', el: h('div', { class: 'empty', text: 'This page could not be shown: ' + (e && e.message || e) }) };
+      return { title: tr('Something went wrong'), el: h('div', { class: 'empty', text: tr('This page could not be shown: {error}', { error: (e && e.message) || e }) }) };
     }
   }
 
@@ -57,7 +57,7 @@
     if (!entry.page) entry.page = buildPage(entry);
     const p = entry.page;
     p.head = h('h1', { text: p.title || '' });
-    main.append(h('div', { class: 'view-head' }, S.nav.length > 1 ? btn('back', 'Back', () => back()) : null, p.head,
+    main.append(h('div', { class: 'view-head' }, S.nav.length > 1 ? btn('back', tr('Back'), () => back()) : null, p.head,
       h('div', { class: 'view-actions' }, p.actions || [])), p.el);
     S.shown = entry;
     if (p.onShow) p.onShow();

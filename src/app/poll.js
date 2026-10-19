@@ -75,7 +75,7 @@
     // Back after losing it: the server may have restarted with a new version of the page.
     if (ok && connLost) checkUpdate();
     connLost = !ok;
-    el.hidden = ok; if (!ok) el.textContent = 'Lost contact with the server: ' + (msg || '') + ' — retrying…';
+    el.hidden = ok; if (!ok) el.textContent = tr('Lost contact with the server: {error} — retrying…', { error: msg || '' });
   }
 
   /** Control this player. auto: a stand-in chosen by the page, not remembered as the choice. */

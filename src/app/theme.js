@@ -3,13 +3,13 @@
   // ---------------------------------------------------------------------------
   // Each highlight comes in a dark-theme and a light-theme shade: [colour, hover colour, text on it].
   const ACCENTS = {
-    orange: { name: 'Orange', dark: ['#f2a541', '#ffcf8a', '#1b1406'], light: ['#c46d08', '#e08a1e', '#fff'] },
-    gold:   { name: 'Gold',   dark: ['#e8c547', '#f5df8f', '#1f1903'], light: ['#8f7100', '#a8860a', '#fff'] },
-    green:  { name: 'Green',  dark: ['#6fd36a', '#a6e8a2', '#0a1f09'], light: ['#2e7d2a', '#3a9636', '#fff'] },
-    teal:   { name: 'Teal',   dark: ['#3fd0c9', '#8ae6e1', '#04201e'], light: ['#0d7f7a', '#14998f', '#fff'] },
-    blue:   { name: 'Blue',   dark: ['#5aa9ff', '#9ccbff', '#04121f'], light: ['#1f6fd1', '#3b86e3', '#fff'] },
-    purple: { name: 'Purple', dark: ['#b18cff', '#d2bcff', '#170b2b'], light: ['#7046d6', '#8660e6', '#fff'] },
-    pink:   { name: 'Pink',   dark: ['#ff7ab8', '#ffb1d6', '#2a0716'], light: ['#c2306f', '#d94c88', '#fff'] },
+    orange: { name: N_('Orange'), dark: ['#f2a541', '#ffcf8a', '#1b1406'], light: ['#c46d08', '#e08a1e', '#fff'] },
+    gold:   { name: N_('Gold'),   dark: ['#e8c547', '#f5df8f', '#1f1903'], light: ['#8f7100', '#a8860a', '#fff'] },
+    green:  { name: N_('Green'),  dark: ['#6fd36a', '#a6e8a2', '#0a1f09'], light: ['#2e7d2a', '#3a9636', '#fff'] },
+    teal:   { name: N_('Teal'),   dark: ['#3fd0c9', '#8ae6e1', '#04201e'], light: ['#0d7f7a', '#14998f', '#fff'] },
+    blue:   { name: N_('Blue'),   dark: ['#5aa9ff', '#9ccbff', '#04121f'], light: ['#1f6fd1', '#3b86e3', '#fff'] },
+    purple: { name: N_('Purple'), dark: ['#b18cff', '#d2bcff', '#170b2b'], light: ['#7046d6', '#8660e6', '#fff'] },
+    pink:   { name: N_('Pink'),   dark: ['#ff7ab8', '#ffb1d6', '#2a0716'], light: ['#c2306f', '#d94c88', '#fff'] },
   };
 
   const hexRgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
@@ -34,7 +34,7 @@
 
   const isHex = (v) => /^#[0-9a-f]{6}$/i.test(v || '');
   // Material Skin's blue: what "from the cover" uses while there's no cover to take a colour from.
-  const MATERIAL_BLUE = { name: 'Blue', dark: ['#82b1ff', '#b6d0ff', '#000'], light: ['#1976d2', '#2f86dc', '#fff'] };
+  const MATERIAL_BLUE = { name: N_('Blue'), dark: ['#82b1ff', '#b6d0ff', '#000'], light: ['#1976d2', '#2f86dc', '#fff'] };
   /** The highlight chosen in Settings: a name from ACCENTS, a colour as #rrggbb, or 'cover' (with the cover's colour, if known). */
   function accentShades(v, cover) {
     if (v === 'cover') return isHex(cover) ? customAccent(cover) : MATERIAL_BLUE;

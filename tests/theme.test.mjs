@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 
 const src = readFileSync(new URL('../src/app/theme.js', import.meta.url), 'utf8');
-const T = vm.runInNewContext(src + '; ({ ACCENTS, accentShades, customAccent, luminance, hexRgb })', {});
+const T = vm.runInNewContext(src + '; ({ ACCENTS, accentShades, customAccent, luminance, hexRgb })', { N_: (s) => s });
 const contrast = (a, b) => { const [x, y] = [T.luminance(T.hexRgb(a)), T.luminance(T.hexRgb(b))].sort((p, q) => q - p); return (x + 0.05) / (y + 0.05); };
 const DARK_BG = '#161920', LIGHT_BG = '#ffffff';
 const full = (c) => (c.length === 4 ? '#' + [...c.slice(1)].map((x) => x + x).join('') : c);
@@ -40,7 +40,7 @@ test('a colour picked by hand is lightened for the dark theme and darkened for t
 });
 
 test('"from the cover" takes the cover\'s colour, or Material\'s blue without one', () => {
-  const T2 = vm.runInNewContext(src + '; ({ accentShades, dominantColour })', {});
+  const T2 = vm.runInNewContext(src + '; ({ accentShades, dominantColour })', { N_: (s) => s });
   assert.equal(T2.accentShades('cover').light[0], '#1976d2');
   assert.equal(T2.accentShades('cover', '#2a5db0').light[0], '#2a5db0');
   const px = (colours) => new Uint8ClampedArray(colours.flatMap(([r, g, b, n]) => Array.from({ length: n }, () => [r, g, b, 255]).flat()));

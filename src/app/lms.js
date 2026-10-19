@@ -13,11 +13,11 @@
           method: 'POST', headers: { 'Content-Type': 'application/json' }, signal: ctrl.signal,
           body: JSON.stringify({ id: 1, method: 'slim.request', params: [player || '', cmd.map((x) => String(x))] }),
         });
-        if (!r.ok) throw new Error('LMS answered ' + r.status);
+        if (!r.ok) throw new Error(tr('LMS answered {status}', { status: r.status }));
         const j = await r.json();
         return j.result || {};
       } catch (e) {
-        if (e.name === 'AbortError') throw new Error('LMS did not answer in time');
+        if (e.name === 'AbortError') throw new Error(tr('LMS did not answer in time'));
         throw e;
       } finally { clearTimeout(tm); }
     }

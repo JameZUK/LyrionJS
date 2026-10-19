@@ -27,8 +27,26 @@ Never run the live tests against a household server: they create and remove test
 | `src/output/` | Web Audio output stage and resampler; media-element output (FLAC verbatim frames → fMP4 → (Managed) Media Source) |
 | `src/host/` | The control socket with resume, and audio streams |
 | `src/app/` | The UI: router, widgets, LMS menus, this browser's player, one file per view |
+| `src/i18n/` | The page's translations, one file per language (`tools/strings.mjs` keeps them in step) |
 | `src/skins/` | Other looks than `style.css`'s, each scoped by `data-skin` (`material.css`: like LMS's Material Skin). An installed LMS skin itself is shown by `src/app/skin.js` |
 | `relay.py` | Dev-only stand-in for the plugin |
+
+## Languages
+
+The page's text is English in the source, wrapped in `tr()` (see `src/app/i18n.js`); each language
+is `src/i18n/<code>.json`, the English text mapped to its translation.
+
+```sh
+node tools/strings.mjs            # each language: how many of the page's keys are translated
+node tools/strings.mjs --update   # add new keys to every language (empty) and drop removed ones
+node tools/strings.mjs --keys     # every key, with the singular of counted text
+```
+
+After changing the page's text, run `--update` and translate the empty entries;
+`tests/i18n.test.mjs` fails while a language is incomplete or a translation loses a
+`{placeholder}`. To add a language, add it to `LANGS` in `i18n.js`, create
+`src/i18n/<code>.json` as `{}` and run `--update`. Counted text needs the plural forms
+`Intl.PluralRules` names for the language (`one`, `few`, `many`, `other`…).
 
 ## Screenshots
 

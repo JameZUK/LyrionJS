@@ -4,11 +4,11 @@
   function xmlMenu(cmd, it, extra = []) {
     const items = [];
     if (+it.isaudio) {
-      items.push({ label: 'Play now', icon: 'play', run: () => act([cmd, 'playlist', 'play', 'item_id:' + it.id], 'Playing') });
-      items.push({ label: 'Play next', icon: 'next_up', run: () => act([cmd, 'playlist', 'insert', 'item_id:' + it.id], 'Playing next') });
-      items.push({ label: 'Add to queue', icon: 'add', run: () => act([cmd, 'playlist', 'add', 'item_id:' + it.id], 'Added to the queue') });
+      items.push({ label: tr('Play now'), icon: 'play', run: () => act([cmd, 'playlist', 'play', 'item_id:' + it.id], tr('Playing')) });
+      items.push({ label: tr('Play next'), icon: 'next_up', run: () => act([cmd, 'playlist', 'insert', 'item_id:' + it.id], tr('Playing next')) });
+      items.push({ label: tr('Add to queue'), icon: 'add', run: () => act([cmd, 'playlist', 'add', 'item_id:' + it.id], tr('Added to the queue')) });
     }
-    if (cmd !== 'favorites' && it.url && +it.isaudio) items.push({ label: 'Add to favourites', icon: 'fav', run: () => act(['favorites', 'add', 'url:' + it.url, 'title:' + it.name, ...(it.image ? ['icon:' + it.image] : [])], 'Added to favourites', '') });
+    if (cmd !== 'favorites' && it.url && +it.isaudio) items.push({ label: tr('Add to favourites'), icon: 'fav', run: () => act(['favorites', 'add', 'url:' + it.url, 'title:' + it.name, ...(it.image ? ['icon:' + it.image] : [])], tr('Added to favourites'), '') });
     sheet(it.name, items.concat(extra), { art: xmlArt(it) });
   }
 
@@ -118,7 +118,7 @@
       if (isLyrionJSApp(a.cmd)) { push('about', { recursion: true }); return true; }   // an LMS menu leading to LyrionJS itself
       let input = null;
       if (item.input || item.type === 'entry' || item.type === 'search' || JSON.stringify(a).includes('__TAGGEDINPUT__')) {
-        input = await prompt2(firstLine(item.text) || 'Search', { placeholder: (item.input && item.input.help && item.input.help.text) || '', ok: 'OK' });
+        input = await prompt2(firstLine(item.text) || tr('Search'), { placeholder: (item.input && item.input.help && item.input.help.text) || '', ok: tr('OK') });
         if (!input) return;
       }
       const title = firstLine(item.text);
@@ -128,7 +128,7 @@
       const r = await jiveDo(a, input);
       // A command that answered with a menu: show that answer (running it again could repeat it).
       if (r && r.item_loop && !next) { push('jive', { action: a, title, input, first: r }); return; }
-      if (which === 'play') toast('Playing'); else if (which === 'add') toast('Added to the queue'); else if (which === 'add-hold') toast('Playing next');
+      if (which === 'play') toast(tr('Playing')); else if (which === 'add') toast(tr('Added to the queue')); else if (which === 'add-hold') toast(tr('Playing next'));
       // A setting changed in place: show its new state.
       if (!next && (which === 'on' || which === 'off' || item.radio != null || item.choiceStrings)) { if (ctx.reload) ctx.reload(); pollSoon(150); return true; }
       jiveNext(next, ctx);
@@ -162,10 +162,10 @@
     if (!clickable && !playable) return h('div', { class: 'xml-text', text: lines.join('\n') });
     const art = jiveArt(item, 96);
     const menu = playable || has('more') ? () => sheet(lines[0], [
-      has('play') ? { label: 'Play now', icon: 'play', run: () => jiveActivate(item, base, 'play', ctx) } : null,
-      has('add-hold') ? { label: 'Play next', icon: 'next_up', run: () => jiveActivate(item, base, 'add-hold', ctx) } : null,
-      has('add') ? { label: 'Add to queue', icon: 'add', run: () => jiveActivate(item, base, 'add', ctx) } : null,
-      has('more') ? { label: 'More…', icon: 'more', run: () => push('jive', { action: jiveAction(item, base, 'more'), title: lines[0] }) } : null,
+      has('play') ? { label: tr('Play now'), icon: 'play', run: () => jiveActivate(item, base, 'play', ctx) } : null,
+      has('add-hold') ? { label: tr('Play next'), icon: 'next_up', run: () => jiveActivate(item, base, 'add-hold', ctx) } : null,
+      has('add') ? { label: tr('Add to queue'), icon: 'add', run: () => jiveActivate(item, base, 'add', ctx) } : null,
+      has('more') ? { label: tr('More…'), icon: 'more', run: () => push('jive', { action: jiveAction(item, base, 'more'), title: lines[0] }) } : null,
     ], { art: art || undefined, sub: lines[1] }) : null;
     return row({
       art: item.radio != null ? undefined : (art || (ctx.textOnly ? undefined : null)), artIcon: playable ? 'note' : 'folder',
@@ -186,7 +186,7 @@
     const page = { title: p.title || '', el: holder, perPlayer: !answer };
     const ctx = { textOnly: false };
     const build = () => swap(holder, lazyList({
-      page: 100, empty: 'Nothing here.',
+      page: 100, empty: tr('Nothing here.'),
       fetch: async (s, n) => {
         if (answer && s > 0) return { items: [], total: s, consumed: 0 };
         const r = answer || await jiveFetch(p.action, s, n, p.input);
@@ -213,7 +213,7 @@
     const page = { title: p.title || '', el: holder, perPlayer: true };
     const items = loopFetch((s, n) => rpc([p.cmd, 'items', s, n, 'want_url:1', ...(p.item ? ['item_id:' + p.item] : []), ...(p.search ? ['search:' + p.search] : [])]), 'loop_loop');
     const build = () => swap(holder, lazyList({
-      page: 200, empty: 'Nothing here.',
+      page: 200, empty: tr('Nothing here.'),
       fetch: items,
       render: (it) => {
         const name = it.name || it.title || '';
@@ -223,14 +223,14 @@
         const isSearch = it.type === 'search';
         const go = async () => {
           if (isSearch) {
-            const q = await prompt2(name || 'Search', { placeholder: 'Search', ok: 'Search' });
+            const q = await prompt2(name || tr('Search'), { placeholder: tr('Search'), ok: tr('Search') });
             if (q) push('xml', { cmd: p.cmd, item: it.id, search: q, title: `${name}: ${q}` });
           } else if (+it.hasitems || it.type === 'link') push('xml', { cmd: p.cmd, item: it.id, title: name, fav: p.fav });
-          else if (+it.isaudio) act([p.cmd, 'playlist', 'play', 'item_id:' + it.id], 'Playing');
+          else if (+it.isaudio) act([p.cmd, 'playlist', 'play', 'item_id:' + it.id], tr('Playing'));
         };
         const extra = p.fav ? [{ sep: true },
-          { label: 'Rename…', icon: 'edit', run: async () => { const n = await prompt2('Rename favourite', { value: name, ok: 'Rename' }); if (n) { await act(['favorites', 'rename', 'item_id:' + it.id, 'title:' + n], 'Renamed', ''); build(); } } },
-          { label: 'Remove from favourites', icon: 'delete', danger: true, run: async () => { if (await confirm2(`Remove “${name}” from favourites?`, 'Remove')) { await act(['favorites', 'delete', 'item_id:' + it.id], 'Removed', ''); build(); } } }] : [];
+          { label: tr('Rename…'), icon: 'edit', run: async () => { const n = await prompt2(tr('Rename favourite'), { value: name, ok: tr('Rename') }); if (n) { await act(['favorites', 'rename', 'item_id:' + it.id, 'title:' + n], tr('Renamed'), ''); build(); } } },
+          { label: tr('Remove from favourites'), icon: 'delete', danger: true, run: async () => { if (await confirm2(tr('Remove “{name}” from favourites?', { name }), tr('Remove'))) { await act(['favorites', 'delete', 'item_id:' + it.id], tr('Removed'), ''); build(); } } }] : [];
         return row({
           art: xmlArt(it), artIcon: isSearch ? 'search' : (+it.hasitems ? 'folder' : 'note'), title: name, sub: it.line2 || it.subtitle || null,
           onclick: go, menu: (+it.isaudio || p.fav) ? () => xmlMenu(p.cmd, it, extra) : null,
@@ -241,22 +241,23 @@
     return page;
   };
 
-  VIEWS.favourites = () => VIEWS.xml({ cmd: 'favorites', title: 'Favourites', fav: true });
+  VIEWS.favourites = () => VIEWS.xml({ cmd: 'favorites', title: tr('Favourites'), fav: true });
 
   function serviceList(kind) {
     return lazyList({
-      page: 100, empty: kind === 'radios' ? 'No radio services are installed on the server.' : 'No apps are installed on the server.',
+      page: 100, empty: kind === 'radios' ? tr('No radio services are installed on the server.') : tr('No apps are installed on the server.'),
       fetch: loopFetch((s, n) => rpc([kind, s, n], ''), kind + 's_loop', (x) => x.cmd),
       render: (a) => row({ art: S.lms.art(a.icon, 96), artIcon: kind === 'radios' ? 'radio' : 'apps', title: a.name,
         onclick: () => (isLyrionJSApp(a.cmd) ? push('about', { recursion: true }) : push('xml', { cmd: a.cmd, title: a.name })) }),
     });
   }
-  VIEWS.radio = () => ({ title: 'Radio', el: serviceList('radios') });
-  VIEWS.apps = () => ({ title: 'Apps', el: serviceList('apps') });
+  VIEWS.radio = () => ({ title: tr('Radio'), el: serviceList('radios') });
+  VIEWS.apps = () => ({ title: tr('Apps'), el: serviceList('apps') });
 
   VIEWS.random = () => {
-    const kinds = [['tracks', 'Songs', 'note'], ['albums', 'Albums', 'album'], ['contributors', 'Artists', 'artist'], ['year', 'Years', 'year']];
-    const el = h('div', { class: 'tiles' }, kinds.map(([k, t, i]) => h('button', { class: 'tile', onclick: () => act(['randomplay', k], `Random ${t.toLowerCase()} mix started`) }, icon(i), h('span', { text: t }))),
-      h('button', { class: 'tile ghost', onclick: () => act(['randomplay', 'disable'], 'Random mix stopped') }, icon('stop'), h('span', { text: 'Stop mix' })));
-    return { title: 'Random mix', el: h('div', {}, h('p', { class: 'view-sub', text: 'LMS keeps the queue topped up with random picks from your library.' }), el) };
+    const kinds = [['tracks', tr('Songs'), 'note', tr('Random song mix started')], ['albums', tr('Albums'), 'album', tr('Random album mix started')],
+      ['contributors', tr('Artists'), 'artist', tr('Random artist mix started')], ['year', tr('Years'), 'year', tr('Random year mix started')]];
+    const el = h('div', { class: 'tiles' }, kinds.map(([k, t, i, msg]) => h('button', { class: 'tile', onclick: () => act(['randomplay', k], msg) }, icon(i), h('span', { text: t }))),
+      h('button', { class: 'tile ghost', onclick: () => act(['randomplay', 'disable'], tr('Random mix stopped')) }, icon('stop'), h('span', { text: tr('Stop mix') })));
+    return { title: tr('Random mix'), el: h('div', {}, h('p', { class: 'view-sub', text: tr('LMS keeps the queue topped up with random picks from your library.') }), el) };
   };

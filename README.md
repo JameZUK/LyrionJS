@@ -47,6 +47,9 @@ browser. Pick it once in *Settings › Skin*.
 - **Phones and tablets.** It keeps playing with the screen locked, and the lock-screen controls work.
 - **The whole of LMS.** Library, search, queue, playlists, favourites, radio, apps and plugins,
   players and sync, alarms and sleep timer.
+- **In your language.** English, Čeština, Dansk, Deutsch, Español, Français, Italiano, Magyar,
+  Nederlands, Norsk, Polski, Suomi and Svenska. It follows LMS's language setting, or choose one
+  for each browser in *Settings › Language*.
 
 ## Install
 
@@ -108,7 +111,11 @@ A few things to know:
 - Diagnostics to the LMS log.
 - The address LMS links to, for example behind a reverse proxy.
 
-Each browser also has its own settings page inside LyrionJS, including its skin.
+Each browser also has its own settings page inside LyrionJS, including its skin and language.
+
+The translations were made for LyrionJS and use LMS's own wording where LMS has it. If something
+reads oddly in your language, please [open an issue](https://github.com/JameZUK/LyrionJS/issues)
+or a pull request: each language is one file in [`src/i18n/`](src/i18n).
 
 ## Limitations
 

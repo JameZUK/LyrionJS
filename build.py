@@ -9,6 +9,7 @@ The page is plain scripts inlined in order:
 """
 import argparse
 import hashlib
+import json
 import os
 import re
 import subprocess
@@ -26,7 +27,7 @@ LIB = [
     "host/transport.js",
 ]
 APP = [
-    "app/util.js", "app/theme.js", "app/lms.js", "app/state.js", "app/widgets.js", "app/router.js", "app/poll.js", "app/actions.js",
+    "app/util.js", "app/i18n.js", "app/theme.js", "app/lms.js", "app/state.js", "app/widgets.js", "app/router.js", "app/poll.js", "app/actions.js",
     "app/slimbrowse.js", "app/local.js", "app/update.js",
     "app/views/now.js", "app/views/queue.js", "app/views/library.js", "app/views/playlists.js", "app/views/search.js",
     "app/views/players.js", "app/views/settings.js", "app/views/about.js",
@@ -68,9 +69,21 @@ def logo():
     return symbol, uri
 
 
+def i18n():
+    """src/i18n/<code>.json: per language, the page's English text -> its translation (i18n.js)."""
+    folder = os.path.join(SRC, "i18n")
+    langs = {}
+    for name in sorted(os.listdir(folder)) if os.path.isdir(folder) else []:
+        if name.endswith(".json"):
+            with open(os.path.join(folder, name), encoding="utf-8") as f:
+                langs[name[:-5]] = {k: v for k, v in json.load(f).items() if v and not k.startswith("//")}
+    text = json.dumps(langs, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
+    return text.replace("</", "<\\/")   # never ends the inline script
+
+
 def page():
     app = ("'use strict';\n(function () {\n  const LJ = window.LJ;\n"
-           f"  const VERSION = '{read_version()}';\n" + script(APP) + "\n})();")
+           f"  const VERSION = '{read_version()}';\n  const I18N = {i18n()};\n" + script(APP) + "\n})();")
     out = read("index.html")
     symbol, uri = logo()
     out = out.replace("@@LOGO_URI@@", uri)   # quote() leaves no " to end the attribute

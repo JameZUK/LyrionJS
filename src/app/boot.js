@@ -29,9 +29,9 @@
   function unreachable(msg) {
     document.getElementById('view').replaceChildren(h('div', { class: 'discover' },
       h('div', { class: 'logo' }, logo()), h('h1', { text: 'LyrionJS' }),
-      h('p', { text: 'Lyrion Music Server is not answering at ' + location.host + '.' }),
-      h('p', { class: 't2', text: (msg ? msg.replace(/\.$/, '') + '. ' : '') + 'Trying again every few seconds…' }),
-      h('button', { class: 'btn', onclick: () => location.reload() }, icon('refresh'), 'Try again')));
+      h('p', { text: tr('Lyrion Music Server is not answering at {host}.', { host: location.host }) }),
+      h('p', { class: 't2', text: (msg ? msg.replace(/\.$/, '') + '. ' : '') + tr('Trying again every few seconds…') }),
+      h('button', { class: 'btn', onclick: () => location.reload() }, icon('refresh'), tr('Try again'))));
     const retry = async () => {
       try { await S.lms.rpc('', ['version', '?'], 5000); location.reload(); }
       catch (e) { setTimeout(retry, document.hidden ? 6 * BOOT_RETRY_MS : BOOT_RETRY_MS); }
@@ -54,21 +54,33 @@
       host.showOwn();   // Material's Extras opens it in a dialog: show LyrionJS's own pages out there
       document.getElementById('view').replaceChildren(h('div', { class: 'discover' },
         h('div', { class: 'logo' }, logo()), h('h1', { text: 'LyrionJS' }),
-        h('p', { text: 'This tab is already playing with LyrionJS.' }),
-        h('button', { class: 'btn', onclick: () => host.showOwn() }, 'Show LyrionJS')));
+        h('p', { text: tr('This tab is already playing with LyrionJS.') }),
+        h('button', { class: 'btn', onclick: () => host.showOwn() }, tr('Show LyrionJS'))));
       return new Promise(() => {});   // and nothing more here
     }
     return new Promise((resolve) => {
       document.getElementById('view').replaceChildren(h('div', { class: 'discover' },
         h('div', { class: 'logo' }, logo()), h('h1', { text: 'LyrionJS' }),
-        h('p', { text: 'LyrionJS plays best in a tab of its own: in this window it stops when the window closes.' }),
+        h('p', { text: tr('LyrionJS plays best in a tab of its own: in this window it stops when the window closes.') }),
         h('div', { class: 'row-btns' },
-          h('a', { class: 'btn', href: location.origin + location.pathname, target: '_blank', rel: 'noopener' }, icon('play'), 'Open in a new tab'),
-          h('button', { class: 'btn ghost', onclick: () => resolve() }, 'Use it here'))));
+          h('a', { class: 'btn', href: location.origin + location.pathname, target: '_blank', rel: 'noopener' }, icon('play'), tr('Open in a new tab')),
+          h('button', { class: 'btn ghost', onclick: () => resolve() }, tr('Use it here')))));
     });
   }
 
+  /** The language changed: the page's text again, without a reload (the music plays on). */
+  function relang() {
+    applyLang();
+    renderNav();
+    const bar = document.getElementById('bar');
+    if (bar._els) { bar.textContent = ''; bar._els = null; updateBar(); }
+    renderPlayerButton(); renderLocalBadge();
+    closeSide(); updateSide();
+    if (S.nav.length) { for (const e of S.nav) dispose(e); S.shown = null; show(S.nav[S.nav.length - 1]); }
+  }
+
   async function boot() {
+    applyLang();
     applyTheme();
     applySkin();
     renderNav();
@@ -88,12 +100,13 @@
       try { name = (await S.lms.rpc('', ['pref', 'libraryname', '?'], 5000))._p2 || ''; } catch (e) { /* older LMS */ }
       S.server = { name: name || 'Lyrion Music Server', version: v._version };
     } catch (e) { unreachable(e.message); return; }
+    if (await learnLmsLang()) relang();   // LMS's language, if it changed since last time
     document.getElementById('serverName').textContent = S.server.name;
     document.body.classList.add('ready');
     S.localId = macBytes().str;
     try { S.config = serverConfig = await (await fetch('/plugins/LyrionJS/config.json', { cache: 'no-store' })).json(); } catch (e) { S.config = serverConfig = {}; }
     notePage(S.config);
-    if (S.config.enabled === 0) toast('Browser players are switched off in LMS (Settings › Plugins › LyrionJS). This page controls your other players.');
+    if (S.config.enabled === 0) toast(tr('Browser players are switched off in LMS (Settings › Plugins › LyrionJS). This page controls your other players.'));
     else claimPlayerThenStart();
     history.replaceState({ d: 1 }, '');
     const saved = store.get('view', 'now');

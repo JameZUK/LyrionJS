@@ -98,7 +98,6 @@
     return hh ? `${hh}:${String(m).padStart(2, '0')}:${ss}` : `${m}:${ss}`;
   }
   const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
-  const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
 
   let toastTimer;
   function toast(msg, kind) {

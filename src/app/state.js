@@ -27,12 +27,12 @@
     // iPadOS Safari claims to be a Mac; touch support gives it away.
     const ipad = /iPad/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
     const os = /Android/.test(ua) ? 'Android' : ipad ? 'iPad' : /iPhone/.test(ua) ? 'iPhone' : /Mac OS X/.test(ua) ? 'macOS' : /Windows/.test(ua) ? 'Windows' : /Linux/.test(ua) ? 'Linux' : '';
-    return `LyrionJS ${b}${os ? ' on ' + os : ''}`;
+    return os ? tr('LyrionJS {browser} on {os}', { browser: b, os }) : 'LyrionJS ' + b;
   }
 
   const rpc = (cmd, player = S.target) => S.lms.rpc(player, cmd);
   const isLocal = (id) => id && id === S.localId;
-  const playerName = (id) => { const p = S.players.find((x) => x.playerid === id); return p ? p.name : (isLocal(id) ? (S.local ? S.local.name : 'This browser') : 'No player'); };
+  const playerName = (id) => { const p = S.players.find((x) => x.playerid === id); return p ? p.name : (isLocal(id) ? (S.local ? S.local.name : tr('This browser')) : tr('No player')); };
 
   async function act(cmd, msg, player) {
     try { await rpc(cmd, player); if (msg) toast(msg); pollSoon(); }

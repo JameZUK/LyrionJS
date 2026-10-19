@@ -138,12 +138,12 @@
 :root[data-skin="material"] .bar-when { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
 :root[data-skin="material"] .bar-time, :root[data-skin="material"] .bar-pos { font: 13px "LJ Roboto Mono", "Roboto Mono", ui-monospace, monospace; color: var(--fg); }
 :root[data-skin="material"] .bar-pos { display: block; }
-/* "by Artist from Album", the words dimmed, as Material's */
+/* "by Artist from Album", the words dimmed, as Material's (in the page's language: i18n.js sets --w-by, --w-from) */
 :root[data-skin="material"] .bar-np .t2.track > span { color: var(--fg); }
 :root[data-skin="material"] .bar-np .t2.track > span:not(:empty)::before { color: var(--fg2); white-space: pre; }
-:root[data-skin="material"] .bar-np .t2.track .by:not(:empty)::before { content: "by "; }
-:root[data-skin="material"] .bar-np .t2.track .from:not(:empty)::before { content: "from "; }
-:root[data-skin="material"] .bar-np .t2.track .by:not(:empty) + .from:not(:empty)::before { content: " from "; }
+:root[data-skin="material"] .bar-np .t2.track .by:not(:empty)::before { content: var(--w-by, "by") " "; }
+:root[data-skin="material"] .bar-np .t2.track .from:not(:empty)::before { content: var(--w-from, "from") " "; }
+:root[data-skin="material"] .bar-np .t2.track .by:not(:empty) + .from:not(:empty)::before { content: " " var(--w-from, "from") " "; }
 :root[data-skin="material"] .bar-vol { display: none; }
 
 /* Now playing, full screen: the cover blurred behind, no bottom bar or queue */
@@ -168,8 +168,8 @@
 :root[data-skin="material"] .np-sub { font-size: 175%; align-items: center; }
 :root[data-skin="material"] .np-link { color: var(--fg); text-align: center; }
 :root[data-skin="material"] .np-link:not(:empty)::before { display: inline-block; margin-right: .3em; font-size: 75%; color: var(--fg2); text-decoration: none; }
-:root[data-skin="material"] .np-artist:not(:empty)::before { content: "by"; }
-:root[data-skin="material"] .np-album:not(:empty)::before { content: "from"; }
+:root[data-skin="material"] .np-artist:not(:empty)::before { content: var(--w-by, "by"); }
+:root[data-skin="material"] .np-album:not(:empty)::before { content: var(--w-from, "from"); }
 :root[data-skin="material"] .np-seek { width: 100%; }
 :root[data-skin="material"] .tm { font: 85% "LJ Roboto Mono", "Roboto Mono", ui-monospace, monospace; color: var(--fg2); }
 :root[data-skin="material"] .np-ctrls .ib:not(.big) { width: 38px; height: 38px; margin: 0 7px; }

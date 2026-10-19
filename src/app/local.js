@@ -13,13 +13,14 @@
     const ua = navigator.userAgent;
     const ios = isIOS();
     const mobile = ios || /Android/.test(ua);
-    let mode = 'webaudio', why = 'desktop browser';
-    if (want === 'webaudio') why = 'chosen in Settings';
-    else if (want !== 'media' && store.get('mediaUnusable', false)) why = 'the media element failed here before';
+    // why: English, for the log; Settings shows it translated.
+    let mode = 'webaudio', why = N_('desktop browser');
+    if (want === 'webaudio') why = N_('chosen in Settings');
+    else if (want !== 'media' && store.get('mediaUnusable', false)) why = N_('the media element failed here before');
     else if (want === 'media' || mobile) {
       const ok = LJ.mediaSupported() && await LJ.selfTest();
-      if (ok) { mode = 'media'; why = want === 'media' ? 'chosen in Settings' : (ios ? 'iPhone/iPad' : 'Android') + ': keeps playing with the screen locked'; }
-      else why = 'this browser cannot play FLAC through a media element' + (ios ? ' (iOS 17.1 or later needed); keep the screen on' : '');
+      if (ok) { mode = 'media'; why = want === 'media' ? N_('chosen in Settings') : ios ? N_('iPhone/iPad: keeps playing with the screen locked') : N_('Android: keeps playing with the screen locked'); }
+      else why = ios ? N_('this browser cannot play FLAC through a media element (iOS 17.1 or later needed); keep the screen on') : N_('this browser cannot play FLAC through a media element');
     }
     diag('output', `mode ${mode} (${why}); ios=${ios} mobile=${mobile} mms=${!!window.ManagedMediaSource} mse=${!!window.MediaSource}`);
     S.outputMode = mode; S.outputWhy = why;
@@ -78,8 +79,8 @@
       if (what === 'name') store.set('name', p.name);
       // The plugin ended this player: another session took it, or browser players were switched off.
       if (what === 'replaced' || what === 'disabled') {
-        toast(what === 'replaced' ? 'This player was taken over by another session; this page is now a remote control.'
-          : 'Browser players are switched off in LMS (Settings › Plugins › LyrionJS); this page is now a remote control.');
+        toast(what === 'replaced' ? tr('This player was taken over by another session; this page is now a remote control.')
+          : tr('Browser players are switched off in LMS (Settings › Plugins › LyrionJS); this page is now a remote control.'));
         if (S.local === p) stopLocalPlayer();
         return;
       }
@@ -103,10 +104,10 @@
       if (fatal) {
         diag('media', 'media element unusable: ' + why);
         // Chosen in Settings: say so, and leave the choice to the person.
-        if (store.get('outputMode', 'auto') === 'media') { fail(new Error('The media element can\'t play here: choose Web Audio in Settings › Audio output.')); return; }
+        if (store.get('outputMode', 'auto') === 'media') { fail(new Error(tr('The media element can\'t play here: choose Web Audio in Settings › Audio output.'))); return; }
         // Automatic: this browser uses Web Audio from now on (Settings can still choose either).
         store.set('mediaUnusable', true);
-        toast('This browser can\'t play through the media element: switching to Web Audio…');
+        toast(tr('This browser can\'t play through the media element: switching to Web Audio…'));
         setTimeout(() => location.reload(), 1500);
         return;
       }
@@ -160,7 +161,7 @@
     if (S.ownsPlayer) { startLocalPlayer(); return; }
     if (navigator.locks && navigator.locks.request) {
       navigator.locks.request('lyrionjs-player', { ifAvailable: true }, (lock) => {
-        if (!lock) { S.ownsPlayer = false; S.localId = macBytes().str; toast('Another tab is this browser\'s player; this one is a remote control.'); return null; }
+        if (!lock) { S.ownsPlayer = false; S.localId = macBytes().str; toast(tr('Another tab is this browser\'s player; this one is a remote control.')); return null; }
         S.ownsPlayer = true;
         startLocalPlayer();
         return new Promise(() => {}); // hold the lock for the life of the tab
@@ -180,15 +181,15 @@
   /** Lets the person name this browser's player (in LMS, so every controller shows it). */
   async function renameLocal(first) {
     if (!S.local) return;
-    const n = await prompt2(first ? 'Give this player a name' : 'Name this player', first
-      ? { value: '', placeholder: 'e.g. Kitchen tablet', ok: 'Save', hint: 'How this browser shows in LMS and your other controllers. Change it any time in Settings.' }
-      : { value: S.local.name, placeholder: 'e.g. Kitchen tablet', ok: 'Save' });
+    const n = await prompt2(first ? tr('Give this player a name') : tr('Name this player'), first
+      ? { value: '', placeholder: tr('e.g. Kitchen tablet'), ok: tr('Save'), hint: tr('How this browser shows in LMS and your other controllers. Change it any time in Settings.') }
+      : { value: S.local.name, placeholder: tr('e.g. Kitchen tablet'), ok: tr('Save') });
     store.set('named', true);   // asked once: never ask again by ourselves
     if (!S.local || !n || n === S.local.name) return;   // (the player may have been switched off meanwhile)
     const name = n.slice(0, 48);
     try { await S.lms.rpc(S.localId, ['name', name]); } catch (e) { fail(e); return; }
     S.local.name = name; store.set('name', name);
-    toast(`This player is now “${name}”`);
+    toast(tr('This player is now “{name}”', { name }));
     renderLocalBadge();
     await pollPlayers().catch(() => {});
     renderPlayerButton();
@@ -213,12 +214,12 @@
     const el = document.getElementById('localBadge');
     if (!el) return;
     el.textContent = '';
-    if (!S.local) { el.append('Browser player off'); el.className = 'badge off'; el.title = ''; el.disabled = true; return; }
+    if (!S.local) { el.append(tr('Browser player off')); el.className = 'badge off'; el.title = ''; el.disabled = true; return; }
     el.disabled = false;
     const snap = S.local.snapshot();
     el.className = 'badge ' + (snap.connected ? 'on' : 'warn');
-    el.append(snap.connected ? `${S.local.name} · ${snap.state}` : 'Connecting to LMS…');
-    el.title = 'Rename this player';
+    el.append(snap.connected ? `${S.local.name} · ${stateWord(snap.state)}` : tr('Connecting to LMS…'));
+    el.title = tr('Rename this player');
   }
 
   /** 'webcodecs' (streaming, exact), 'chunks' (decodeAudioData fallback) or '' (no MP3). */

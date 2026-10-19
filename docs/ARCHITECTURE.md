@@ -184,7 +184,7 @@ One self-contained HTML file built from `src/`:
 | `src/core/` | No DOM, no I/O, runs under Node: `bytes.js` (byte queues), `slimproto.js` (framing, HELO, STAT), `decoder.js` (the decoder interface), `flac.js`, `pcm.js`, `mp3.js` (framing, gapless trim, the WebCodecs chunk decoder), `transition.js` (crossfade, fade in and out between the decoders and the output), `player.js` (the player state machine: tracks, sync, reports) |
 | `src/output/` | `worklet.js` (the output stage: sample-accurate starts, sync pauses and skips, volume ramp, position reports; an AudioWorklet on secure pages, main thread elsewhere), `webaudio.js` (the Web Audio output and resampler), `fmp4.js` and `media.js` (PCM → FLAC verbatim frames → fragmented MP4 → `<audio>` via (Managed) Media Source) |
 | `src/host/` | `transport.js`: the control socket with resume, and audio streams over `fetch()`, with the browser APIs injected so it runs under Node too |
-| `src/app/` | The UI, sharing one scope: `util`, `theme` (light or dark, highlight colour), `lms` (JSON-RPC), `state`, `widgets`, `router`, `poll`, `actions`, `slimbrowse` (LMS menus), `local` (this browser's player), `views/` (one file per page), `skin` (the Material skin's layout, and an LMS skin over the page), `boot` |
+| `src/app/` | The UI, sharing one scope: `util`, `i18n` (languages), `theme` (light or dark, highlight colour), `lms` (JSON-RPC), `state`, `widgets`, `router`, `poll`, `actions`, `slimbrowse` (LMS menus), `local` (this browser's player), `views/` (one file per page), `skin` (the Material skin's layout, and an LMS skin over the page), `boot` |
 
 `build.py` inlines them, in that order, into one HTML file: core, output and host as
 `<script id="lj-lib">` modules on a shared `LJ` namespace (the worklet's text is also loaded
@@ -200,6 +200,21 @@ Content-Security-Policy: nothing is loaded from other sites, and no inline handl
   It stops reading while it holds 2 MiB undecoded, so flow control is TCP's own. Otherwise it
   tries `fetch()` to that address directly (decision 2C).
 - **Library and control of other players:** LMS's JSON-RPC, same-origin.
+
+### Languages (`src/app/i18n.js`)
+
+The page's own words go through `tr('English text', { name })` (or `trn(n, 'one', 'other')` for
+counted text, chosen by `Intl.PluralRules`). The English is the key: `src/i18n/<code>.json` maps it
+to the translation (an object of plural forms for counted text), and `build.py` inlines them all.
+Lists made before the language is known mark their text with `N_()` and translate where it's shown;
+index.html's fixed text is in `data-i18n*` attributes. A missing translation shows the English.
+What LMS sends (menus, names, its messages) already comes in LMS's language, so the page follows
+LMS's language setting (`pref language`, remembered for the next start) unless *Settings ›
+Language* chooses another for this browser. A change redraws the page in place (`relang()` in
+`boot.js`): the music isn't interrupted. Numbers and dates use the language's own formats; the
+weekday names come from `Intl.DateTimeFormat`. Words that the style sheets add (Material's "by" and
+"from") are CSS variables set by `applyLang()`. The plugin's own LMS strings are translated in
+`strings.txt` as usual.
 
 ### LMS menus (SlimBrowse)
 

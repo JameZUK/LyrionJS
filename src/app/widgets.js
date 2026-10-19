@@ -31,7 +31,7 @@
     const panel = h('div', { class: 'sheet-panel', role: 'dialog', 'aria-modal': 'true', 'aria-label': title },
       h('div', { class: 'sheet-head' }, opts.art ? artEl(opts.art, opts.artIcon || 'note', 'sm') : null,
         h('div', { class: 'sheet-title' }, h('div', { class: 't1', text: title }), opts.sub ? h('div', { class: 't2', text: opts.sub }) : null),
-        btn('close', 'Close', () => closeSheet())),
+        btn('close', tr('Close'), () => closeSheet())),
       list);
     wrap.append(h('div', { class: 'sheet-scrim', onclick: () => closeSheet() }), panel);
     wrap.hidden = false;
@@ -54,21 +54,21 @@
   }
 
   /** A text prompt; resolves the entered text, or null if cancelled or dismissed. */
-  function prompt2(title, { value = '', placeholder = '', ok = 'OK', type = 'text', hint = '' } = {}) {
+  function prompt2(title, { value = '', placeholder = '', ok = tr('OK'), type = 'text', hint = '' } = {}) {
     return new Promise((resolve) => {
       const input = h('input', { class: 'field', type, value, placeholder, 'aria-label': title });
       const form = h('form', { class: 'prompt', onsubmit: (e) => { e.preventDefault(); const v = input.value.trim(); closeSheet(true); resolve(v || null); } },
-        input, h('div', { class: 'row-btns' }, h('button', { type: 'button', class: 'btn ghost', onclick: () => closeSheet() }, 'Cancel'), h('button', { class: 'btn', type: 'submit' }, ok)));
+        input, h('div', { class: 'row-btns' }, h('button', { type: 'button', class: 'btn ghost', onclick: () => closeSheet() }, tr('Cancel')), h('button', { class: 'btn', type: 'submit' }, ok)));
       sheet(title, [{ el: form }], { onDismiss: () => resolve(null), sub: hint || undefined });
       setTimeout(() => input.focus(), 50);
     });
   }
   /** Yes or no; resolves false if dismissed. */
-  function confirm2(title, okLabel = 'Delete') {
+  function confirm2(title, okLabel = tr('Delete')) {
     return new Promise((resolve) => {
       sheet(title, [
         { label: okLabel, icon: 'delete', danger: true, run: () => resolve(true) },
-        { label: 'Cancel', icon: 'close', run: () => resolve(false) },
+        { label: tr('Cancel'), icon: 'close', run: () => resolve(false) },
       ], { onDismiss: () => resolve(false) });
     });
   }
@@ -79,7 +79,7 @@
    * is how many entries of the collection the page covered, when items were filtered out of it.
    * Loading stops as soon as the list leaves the page.
    */
-  function lazyList({ fetch, render, grid = false, empty = 'Nothing here.', page = 100 }) {
+  function lazyList({ fetch, render, grid = false, empty = tr('Nothing here.'), page = 100 }) {
     const box = h('div', { class: grid ? 'grid' : 'list' });
     const sentinel = h('div', { class: 'sentinel' });
     const wrap = h('div', { class: 'lazy' }, box, sentinel);
@@ -133,7 +133,7 @@
       num != null ? h('div', { class: 'num', text: num }) : (art !== undefined ? artEl(art, artIcon, 'sm') : null),
       h('div', { class: 'meta' }, h('div', { class: 't1', text: title || '' }), sub ? h('div', { class: 't2', text: sub }) : null),
       right != null ? h('div', { class: 'right', text: right }) : null,
-      menu ? btn('more', 'More', (e) => { e.stopPropagation(); menu(); }, 'more') : null);
+      menu ? btn('more', tr('More'), (e) => { e.stopPropagation(); menu(); }, 'more') : null);
     if (onclick) {
       r.addEventListener('click', onclick);
       r.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target === r) onclick(e); });
@@ -156,7 +156,7 @@
     const c = h('div', { class: 'card' + (round ? ' round' : ''), tabindex: 0, role: 'button' },
       artEl(art, artIcon, 'lg'),
       h('div', { class: 't1', text: title || '' }), sub ? h('div', { class: 't2', text: sub }) : null,
-      menu ? btn('more', 'More', (e) => { e.stopPropagation(); menu(); }, 'more') : null);
+      menu ? btn('more', tr('More'), (e) => { e.stopPropagation(); menu(); }, 'more') : null);
     c.addEventListener('click', onclick);
     c.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target === c) onclick(e); });
     if (menu) c.addEventListener('contextmenu', (e) => { e.preventDefault(); menu(); });
