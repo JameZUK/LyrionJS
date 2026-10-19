@@ -36,6 +36,18 @@ Never run the live tests against a household server: they create and remove test
 The page's text is English in the source, wrapped in `tr()` (see `src/app/i18n.js`); each language
 is `src/i18n/<code>.json`, the English text mapped to its translation.
 
+The twelve translations (cs, da, de, es, fi, fr, hu, it, nl, no, pl, sv), and the plugin's LMS
+strings in `plugin/LyrionJS/strings.txt`, were made with AI (Claude) from a brief: LMS's own
+translations for the shared terms (queue, favourites, shuffle, crossfade…), the queue kept apart
+from saved playlists, placeholders untouched, the jokes rewritten rather than translated word for
+word. No native speaker has checked them yet. Corrections from speakers win: take them as they
+come, and keep the wording LMS uses where a fix would part from it without reason.
+
+To fix a translation, edit the value (never the English key) in `src/i18n/<code>.json`, keeping
+every `{placeholder}`, then run `node --test tests/i18n.test.mjs`. For the plugin's LMS strings,
+edit that language's line (`\t<CODE>\t<text>`) under the string's id in `strings.txt`; LMS reads
+it at start, so a change there needs an LMS restart.
+
 ```sh
 node tools/strings.mjs            # each language: how many of the page's keys are translated
 node tools/strings.mjs --update   # add new keys to every language (empty) and drop removed ones

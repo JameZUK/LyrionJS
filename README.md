@@ -49,7 +49,8 @@ browser. Pick it once in *Settings › Skin*.
   players and sync, alarms and sleep timer.
 - **In your language.** English, Čeština, Dansk, Deutsch, Español, Français, Italiano, Magyar,
   Nederlands, Norsk, Polski, Suomi and Svenska. It follows LMS's language setting, or choose one
-  for each browser in *Settings › Language*.
+  for each browser in *Settings › Language*. The translations are AI-made: [corrections
+  welcome](#translations).
 
 ## Install
 
@@ -113,9 +114,32 @@ A few things to know:
 
 Each browser also has its own settings page inside LyrionJS, including its skin and language.
 
-The translations were made for LyrionJS and use LMS's own wording where LMS has it. If something
-reads oddly in your language, please [open an issue](https://github.com/JameZUK/LyrionJS/issues)
-or a pull request: each language is one file in [`src/i18n/`](src/i18n).
+### Translations
+
+The translations were made with AI (Claude), not by native speakers. They follow LMS's own wording
+where LMS has it, so LyrionJS reads like the rest of LMS, but they haven't been checked by someone
+who speaks each language, so some phrases may be awkward or wrong. Corrections are very welcome.
+
+To fix one:
+
+1. Open your language's file in [`src/i18n/`](src/i18n), for example `de.json` for German. Each
+   line is the English text, then its translation:
+
+   ```json
+   "Add to queue": "Zur Warteschlange hinzufügen",
+   ```
+
+2. Change the translation (the right-hand side) only. Keep the English (the left-hand side) as it
+   is, and keep anything in braces, such as `{name}` or `{n}`: LyrionJS fills those in. Counted
+   text has one entry per plural form (`"one"`, `"other"`, and in some languages `"few"` or
+   `"many"`).
+3. Send it as a pull request. If you'd rather not edit files, [open an
+   issue](https://github.com/JameZUK/LyrionJS/issues) saying which text, the language, and what it
+   should say.
+
+To check your change before sending it: `node --test tests/i18n.test.mjs` (it checks that nothing
+is missing and every `{placeholder}` is kept). A new language is welcome too: see
+[`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md#languages).
 
 ## Limitations
 
