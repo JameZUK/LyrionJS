@@ -6,7 +6,8 @@
   // ---------------------------------------------------------------------------
   const LANGS = {
     en: 'English', cs: 'Čeština', da: 'Dansk', de: 'Deutsch', es: 'Español', fr: 'Français', it: 'Italiano',
-    hu: 'Magyar', nl: 'Nederlands', no: 'Norsk', pl: 'Polski', fi: 'Suomi', sv: 'Svenska',
+    hu: 'Magyar', nl: 'Nederlands', nb: 'Norsk (bokmål)', nn: 'Norsk (nynorsk)', pl: 'Polski', fi: 'Suomi',
+    sv: 'Svenska',
   };
   let lang = 'en', dict = null, pluralRules = null;
   /** For numbers and dates: the browser's own region in the language in use (en-GB, de-AT…), else the language. */
@@ -36,9 +37,14 @@
     return fill(+n === 1 ? one : other, v);
   }
 
-  /** The browser's preferred locale for a language of ours, if it has one (Norwegian: nb, nn or no). */
+  /**
+   * Our code for a language code. Bokmål is nb here. A workaround, for compatibility only: LMS
+   * before 9.2 (and LyrionJS before nb and nn) call bokmål "no", so "no" read from them means nb.
+   */
+  const ourLang = (c) => (c === 'no' ? 'nb' : c);
+  /** The browser's preferred locale for a language of ours, if it has one (bokmål: nb or no). */
   function regionOf(l, prefs = (typeof navigator !== 'undefined' && (navigator.languages || [navigator.language])) || []) {
-    const base = (x) => { const b = String(x || '').toLowerCase().split('-')[0]; return b === 'nb' || b === 'nn' ? 'no' : b; };
+    const base = (x) => ourLang(String(x || '').toLowerCase().split('-')[0]);
     const hit = prefs.find((x) => base(x) === l);
     try { return hit ? Intl.getCanonicalLocales(hit)[0] : l; } catch (e) { return l; }
   }
@@ -69,12 +75,14 @@
     }).replace(/\|/g, '');
   }
 
-  /** LMS's language setting (EN, EN_GB, DE, NO…) as one of ours. */
-  const fromLms = (code) => { const c = String(code || '').slice(0, 2).toLowerCase(); return LANGS[c] ? c : 'en'; };
-  const langChoice = () => (LANGS[store.get('lang', 'auto')] ? store.get('lang', 'auto') : 'auto');
+  /** LMS's language setting (EN, EN_GB, DE, NB, NN, or NO before 9.2…) as one of ours. */
+  const fromLms = (code) => { const c = ourLang(String(code || '').slice(0, 2).toLowerCase()); return LANGS[c] ? c : 'en'; };
+  const langChoice = () => { const c = ourLang(store.get('lang', 'auto')); return LANGS[c] ? c : 'auto'; };
+  /** LMS's language, as last seen. */
+  const lmsLang = () => ourLang(store.get('lmsLang', 'en'));
   /** The language in use: chosen in Settings, else LMS's (as last seen, until LMS says). */
   function applyLang() {
-    const c = langChoice() === 'auto' ? store.get('lmsLang', 'en') : langChoice();
+    const c = langChoice() === 'auto' ? lmsLang() : langChoice();
     lang = c !== 'en' && I18N[c] ? c : 'en';
     dict = lang === 'en' ? null : I18N[lang];
     pluralRules = new Intl.PluralRules(lang);
@@ -93,7 +101,7 @@
   async function learnLmsLang() {
     let code = 'en';
     try { code = fromLms((await S.lms.rpc('', ['pref', 'language', '?'], 5000))._p2); } catch (e) { return false; }
-    if (code === store.get('lmsLang', 'en')) return false;
+    if (code === lmsLang()) return false;
     store.set('lmsLang', code);
     if (langChoice() !== 'auto') return false;
     applyLang();

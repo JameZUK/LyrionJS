@@ -57,7 +57,9 @@ test('the page picks the translation, fills it in, and falls back to English', (
   assert.equal(L.trn(1, '{n} track', '{n} tracks'), 'ein Titel');
   assert.equal(L.trn(3, '{n} track', '{n} tracks'), '3 Titel');
   assert.equal(L.fromLms('EN_GB'), 'en');
-  assert.equal(L.fromLms('NO'), 'no');
+  assert.equal(L.fromLms('NO'), 'nb');   // NO, before LMS 9.2, is Norwegian (bokmål)
+  assert.equal(L.fromLms('NB'), 'nb');
+  assert.equal(L.fromLms('NN'), 'nn');
   assert.equal(L.fromLms('ZH_CN'), 'en');   // not one of ours (yet)
 });
 
@@ -75,5 +77,21 @@ test('dates as LMS\'s date and time settings write them, ISO included', () => {
   assert.equal(L.regionOf('en', ['en-GB', 'en']), 'en-GB');
   assert.equal(L.regionOf('de', ['en-GB', 'de-AT']), 'de-AT');
   assert.equal(L.regionOf('fr', ['en-GB']), 'fr');
-  assert.equal(L.regionOf('no', ['nb-NO']), 'nb-NO');
+  assert.equal(L.regionOf('nb', ['nb-NO']), 'nb-NO');
+  assert.equal(L.regionOf('nb', ['no-NO']), 'no-NO');   // Norwegian, as some browsers call bokmål
+  assert.equal(L.regionOf('nn', ['nb-NO', 'nn-NO']), 'nn-NO');
+  assert.equal(L.regionOf('nn', ['nb-NO']), 'nn');      // not bokmål's month names
+});
+
+test('a language chosen as "no" (before nb and nn) is now Norwegian (bokmål)', () => {
+  const src = readFileSync(new URL('../src/app/i18n.js', import.meta.url), 'utf8');
+  const stored = { lang: 'no' };
+  const store = { get: (k, d) => (k in stored ? stored[k] : d), set: (k, v) => { stored[k] = v; } };
+  const document = { documentElement: { style: { setProperty: () => {} } }, querySelectorAll: () => [] };
+  const I18N = { nb: { 'Play now': 'Spill av nå' } };
+  const L = vm.runInNewContext(src + '; ({ tr, applyLang, langChoice })', { store, document, I18N, Intl });
+  L.applyLang();
+  assert.equal(L.langChoice(), 'nb');
+  assert.equal(L.tr('Play now'), 'Spill av nå');
+  assert.equal(document.documentElement.lang, 'nb');
 });

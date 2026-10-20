@@ -97,7 +97,7 @@
       const dg = h('input', { type: 'checkbox', class: 'switch', checked: store.get('diag', !!(S.config && S.config.clientDiagnostics)), 'aria-label': tr('Send diagnostics') });
       dg.addEventListener('change', () => store.set('diag', dg.checked));
       // The language: LMS's (as its menus are), or one chosen for this browser.
-      const lmsName = LANGS[store.get('lmsLang', 'en')] || LANGS.en;
+      const lmsName = LANGS[lmsLang()] || LANGS.en;
       const lg = h('select', { class: 'select', 'aria-label': tr('Language') },
         h('option', { value: 'auto', text: tr('As Lyrion Music Server ({language})', { language: lmsName }), selected: langChoice() === 'auto' }),
         Object.entries(LANGS).map(([v, name]) => h('option', { value: v, text: name, selected: langChoice() === v })));

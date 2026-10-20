@@ -48,9 +48,9 @@ browser. Pick it once in *Settings › Skin*.
 - **The whole of LMS.** Library, search, queue, playlists, favourites, radio, apps and plugins,
   players and sync, alarms and sleep timer.
 - **In your language.** English, Čeština, Dansk, Deutsch, Español, Français, Italiano, Magyar,
-  Nederlands, Norsk, Polski, Suomi and Svenska. It follows LMS's language setting, or choose one
-  for each browser in *Settings › Language*. The translations are AI-made: [corrections
-  welcome](#translations).
+  Nederlands, Norsk (bokmål), Norsk (nynorsk), Polski, Suomi and Svenska. It follows LMS's
+  language setting, or choose one for each browser in *Settings › Language*. The translations are
+  AI-made: [corrections welcome](#translations).
 
 ## Install
 

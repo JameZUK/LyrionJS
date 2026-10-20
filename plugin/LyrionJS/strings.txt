@@ -1,3 +1,7 @@
+# Norwegian: LyrionJS calls bokmål nb. NO here is a compatibility workaround for LMS 9.1,
+# which only knows NO; LMS 9.2 calls bokmål NB and falls back from NB to NO.
+# NN (nynorsk) is read by LMS 9.2 and ignored by 9.1.
+
 PLUGIN_LYRIONJS
 	EN	LyrionJS
 	CS	LyrionJS
@@ -10,6 +14,7 @@ PLUGIN_LYRIONJS
 	IT	LyrionJS
 	NL	LyrionJS
 	NO	LyrionJS
+	NN	LyrionJS
 	PL	LyrionJS
 	SV	LyrionJS
 
@@ -24,7 +29,8 @@ PLUGIN_LYRIONJS_DESC
 	HU	Zenelejátszás bármely webböngészőben: a böngésző Slimproto-lejátszóvá válik az LMS-ben, teljes vezérlővel. Nyisd meg a /plugins/LyrionJS/ címen ezen a szerveren.
 	IT	Riproduci musica in qualsiasi browser web: il browser diventa un lettore Slimproto in LMS, con un controller completo. Aprilo all'indirizzo /plugins/LyrionJS/ di questo server.
 	NL	Muziek afspelen in elke webbrowser: de browser wordt een Slimproto-speler in LMS, met volledige bediening. Open het via /plugins/LyrionJS/ op deze server.
-	NO	Spill musikk i en hvilken som helst nettleser: nettleseren blir en Slimproto-spiller i LMS, med full kontroll. Åpne den på /plugins/LyrionJS/ på denne serveren.
+	NO	Spill musikk i en hvilken som helst nettleser: nettleseren blir en Slimproto-spiller i LMS, med full kontroll. Åpne den på /plugins/LyrionJS/ på denne tjeneren.
+	NN	Spel musikk i kva nettlesar som helst: nettlesaren blir ein Slimproto-spelar i LMS, med full kontroll. Opne han på /plugins/LyrionJS/ på denne tenaren.
 	PL	Odtwarzaj muzykę w dowolnej przeglądarce: przeglądarka staje się odtwarzaczem Slimproto w LMS, z pełnym kontrolerem. Otwórz LyrionJS pod adresem /plugins/LyrionJS/ na tym serwerze.
 	SV	Spela musik i valfri webbläsare: webbläsaren blir en Slimproto-spelare i LMS, med en fullständig kontroll. Öppna den på /plugins/LyrionJS/ på den här servern.
 
@@ -40,6 +46,7 @@ PLUGIN_LYRIONJS_LINK
 	IT	Lettore web LyrionJS
 	NL	LyrionJS-webspeler
 	NO	LyrionJS nettspiller
+	NN	LyrionJS nettspelar
 	PL	Odtwarzacz internetowy LyrionJS
 	SV	LyrionJS webbspelare
 
@@ -55,6 +62,7 @@ PLUGIN_LYRIONJS_MENU_INFO
 	IT	Tocca l'indirizzo per aprire il lettore, oppure aprilo in un browser su qualsiasi dispositivo della tua rete.
 	NL	Tik op het adres om de speler te openen, of open het in een browser op een apparaat in je netwerk.
 	NO	Trykk på adressen for å åpne spilleren, eller åpne den i en nettleser på en hvilken som helst enhet i nettverket ditt.
+	NN	Trykk på adressa for å opne spelaren, eller opne ho i ein nettlesar på kva eining som helst i nettverket ditt.
 	PL	Stuknij adres, aby otworzyć odtwarzacz, lub otwórz go w przeglądarce na dowolnym urządzeniu w twojej sieci.
 	SV	Tryck på adressen för att öppna spelaren, eller öppna den i en webbläsare på valfri enhet i ditt nätverk.
 
@@ -70,6 +78,7 @@ PLUGIN_LYRIONJS_OPEN
 	IT	Lettore web
 	NL	Webspeler
 	NO	Nettspiller
+	NN	Nettspelar
 	PL	Odtwarzacz internetowy
 	SV	Webbspelare
 
@@ -85,6 +94,7 @@ PLUGIN_LYRIONJS_OPEN_DESC
 	IT	Apri il lettore in un browser su qualsiasi dispositivo della tua rete: quel browser diventa un lettore in LMS. Salva l'indirizzo nei segnalibri o aggiungilo alla schermata Home di un telefono o tablet.
 	NL	Open de speler in een browser op een apparaat in je netwerk: die browser wordt een speler in LMS. Maak een bladwijzer van het adres, of zet het op het beginscherm van een telefoon of tablet.
 	NO	Åpne spilleren i en nettleser på en hvilken som helst enhet i nettverket ditt: den nettleseren blir en spiller i LMS. Lagre adressen som bokmerke, eller legg den til på startskjermen på en telefon eller et nettbrett.
+	NN	Opne spelaren i ein nettlesar på kva eining som helst i nettverket ditt: den nettlesaren blir ein spelar i LMS. Lagre adressa som bokmerke, eller legg ho til på startskjermen på ein telefon eller eit nettbrett.
 	PL	Otwórz odtwarzacz w przeglądarce na dowolnym urządzeniu w twojej sieci: ta przeglądarka stanie się odtwarzaczem w LMS. Dodaj adres do zakładek albo do ekranu głównego telefonu lub tabletu.
 	SV	Öppna spelaren i en webbläsare på valfri enhet i ditt nätverk: den webbläsaren blir en spelare i LMS. Spara adressen som bokmärke, eller lägg till den på hemskärmen på en telefon eller surfplatta.
 
@@ -100,6 +110,7 @@ PLUGIN_LYRIONJS_OPEN_BUTTON
 	IT	Apri LyrionJS
 	NL	LyrionJS openen
 	NO	Åpne LyrionJS
+	NN	Opne LyrionJS
 	PL	Otwórz LyrionJS
 	SV	Öppna LyrionJS
 
@@ -115,6 +126,7 @@ PLUGIN_LYRIONJS_URL
 	IT	Indirizzo del lettore
 	NL	Spelersadres
 	NO	Spillerens adresse
+	NN	Adressa til spelaren
 	PL	Adres odtwarzacza
 	SV	Spelarens adress
 
@@ -129,7 +141,8 @@ PLUGIN_LYRIONJS_URL_DESC
 	HU	A cím, amelyen az LMS menüi és hivatkozásai megnyitják a lejátszót. Hagyd üresen, ha a szerver DNS-ben szereplő nevét szeretnéd használni (vagy az IP-címét, ha nincs neve). Akkor állítsd be, ha a böngészők más néven érik el az LMS-t, például fordított proxyn keresztül: böngészőnként és címenként egy LMS-lejátszó jön létre, ezért maradj egy címnél.
 	IT	L'indirizzo a cui i menu e i link di LMS aprono il lettore. Lascia vuoto per usare il nome DNS di questo server (o il suo indirizzo IP se non ne ha uno). Impostalo se i browser raggiungono LMS con un altro nome, ad esempio tramite un reverse proxy: il lettore è un lettore LMS per browser e indirizzo, quindi usane uno solo.
 	NL	Het adres waarop de menu's en links van LMS de speler openen. Laat leeg om de naam van deze server uit DNS te gebruiken (of het IP-adres als er geen naam is). Vul het in als browsers LMS onder een andere naam bereiken, bijvoorbeeld via een reverse proxy: de speler is één LMS-speler per browser en adres, dus houd het bij één adres.
-	NO	Adressen som menyene og lenkene i LMS åpner spilleren på. La feltet stå tomt for å bruke serverens navn fra DNS (eller IP-adressen hvis den ikke har noe). Angi den hvis nettlesere når LMS under et annet navn, for eksempel via en omvendt proxy: spilleren er én LMS-spiller per nettleser og adresse, så hold deg til én.
+	NO	Adressen som menyene og lenkene i LMS åpner spilleren på. La feltet stå tomt for å bruke tjenerens navn fra DNS (eller IP-adressen hvis den ikke har noe). Angi den hvis nettlesere når LMS under et annet navn, for eksempel via en omvendt proxy: spilleren er én LMS-spiller per nettleser og adresse, så hold deg til én.
+	NN	Adressa som menyane og lenkjene i LMS opnar spelaren på. La feltet stå tomt for å bruke namnet til tenaren frå DNS (eller IP-adressa viss han ikkje har noko namn). Fyll ho inn viss nettlesarar når LMS under eit anna namn, til dømes via ein omvend proxy: spelaren er éin LMS-spelar per nettlesar og adresse, så hald deg til éi.
 	PL	Adres, pod którym menu i linki LMS otwierają odtwarzacz. Pozostaw puste, aby użyć nazwy tego serwera z DNS (lub jego adresu IP, jeśli nie ma nazwy). Ustaw go, jeśli przeglądarki łączą się z LMS pod inną nazwą, np. przez odwrotne proxy: na każdą przeglądarkę i adres przypada jeden odtwarzacz LMS, więc trzymaj się jednego adresu.
 	SV	Adressen som LMS menyer och länkar öppnar spelaren på. Lämna tomt för att använda serverns namn från DNS (eller dess IP-adress om den inte har något). Ange den om webbläsare når LMS under ett annat namn, till exempel via en omvänd proxy: spelaren är en LMS-spelare per webbläsare och adress, så håll dig till en.
 
@@ -145,6 +158,7 @@ PLUGIN_LYRIONJS_URL_BAD
 	IT	L'indirizzo del lettore deve essere un semplice indirizzo http:// o https://, come http://music.example.lan:9000. Non è stato modificato.
 	NL	Het spelersadres moet een gewoon http://- of https://-adres zijn, zoals http://music.example.lan:9000. Het is niet gewijzigd.
 	NO	Spillerens adresse må være en vanlig http://- eller https://-adresse, for eksempel http://music.example.lan:9000. Den ble ikke endret.
+	NN	Adressa til spelaren må vere ei vanleg http://- eller https://-adresse, til dømes http://music.example.lan:9000. Ho vart ikkje endra.
 	PL	Adres odtwarzacza musi być zwykłym adresem http:// lub https://, np. http://music.example.lan:9000. Nie został zmieniony.
 	SV	Spelarens adress måste vara en vanlig http://- eller https://-adress, till exempel http://music.example.lan:9000. Den ändrades inte.
 
@@ -160,6 +174,7 @@ PLUGIN_LYRIONJS_ENABLED
 	IT	Lettori del browser
 	NL	Browserspelers
 	NO	Nettleserspillere
+	NN	Nettlesarspelarar
 	PL	Odtwarzacze w przeglądarce
 	SV	Webbläsarspelare
 
@@ -175,6 +190,7 @@ PLUGIN_LYRIONJS_ENABLED_DESC
 	IT	Consenti ai browser di connettersi come lettori. Se disattivato, la pagina funziona comunque come controller per gli altri lettori.
 	NL	Browsers toestaan als speler verbinding te maken. Als dit uit staat, werkt de pagina nog steeds als bediening voor je andere spelers.
 	NO	La nettlesere koble til som spillere. Når dette er av, fungerer siden fortsatt som kontroll for de andre spillerne dine.
+	NN	La nettlesarar kople til som spelarar. Når dette er av, fungerer sida framleis som kontroll for dei andre spelarane dine.
 	PL	Pozwól przeglądarkom łączyć się jako odtwarzacze. Gdy ta opcja jest wyłączona, strona nadal działa jako kontroler twoich pozostałych odtwarzaczy.
 	SV	Tillåt webbläsare att ansluta som spelare. När detta är av fungerar sidan fortfarande som kontroll för dina andra spelare.
 
@@ -190,6 +206,7 @@ PLUGIN_LYRIONJS_PROXY
 	IT	Stream di radio e podcast
 	NL	Radio- en podcaststreams
 	NO	Radio- og podkaststrømmer
+	NN	Radio- og podkaststraumar
 	PL	Strumienie radiowe i podcasty
 	SV	Radio- och poddströmmar
 
@@ -205,6 +222,7 @@ PLUGIN_LYRIONJS_PROXY_DESC
 	IT	Ricevi gli stream Internet tramite LMS per i lettori LyrionJS (consigliato: un browser non può ricevere direttamente la maggior parte delle stazioni). Imposta l'opzione di streaming "proxied" di LMS solo sui lettori LyrionJS, quando si connettono.
 	NL	Internetstreams via LMS ophalen voor LyrionJS-spelers (aanbevolen: een browser kan de meeste zenders niet rechtstreeks ophalen). Zet de eigen LMS-streamingoptie "via proxy" aan, alleen voor LyrionJS-spelers, wanneer ze verbinding maken.
 	NO	Hent internettstrømmer via LMS for LyrionJS-spillere (anbefalt: en nettleser kan ikke hente de fleste stasjoner direkte). Slår på LMS sitt eget strømmealternativ «via proxy» bare for LyrionJS-spillere, når de kobler til.
+	NN	Hent internettstraumar via LMS for LyrionJS-spelarar (tilrådd: ein nettlesar kan ikkje hente dei fleste stasjonane direkte). Slår på LMS sitt eige strøymealternativ «via proxy» berre for LyrionJS-spelarar, når dei koplar til.
 	PL	Pobieraj strumienie internetowe przez LMS dla odtwarzaczy LyrionJS (zalecane: przeglądarka nie może pobrać większości stacji bezpośrednio). Włącza własną opcję strumieniowania LMS „proxied” tylko w odtwarzaczach LyrionJS, gdy się łączą.
 	SV	Hämta internetströmmar via LMS för LyrionJS-spelare (rekommenderas: en webbläsare kan inte hämta de flesta stationer direkt). Aktiverar LMS eget strömningsalternativ ”via proxy” endast för LyrionJS-spelare, när de ansluter.
 
@@ -220,6 +238,7 @@ PLUGIN_LYRIONJS_OUTPUT
 	IT	Uscita audio
 	NL	Audio-uitvoer
 	NO	Lydutgang
+	NN	Lydutgang
 	PL	Wyjście audio
 	SV	Ljudutgång
 
@@ -235,6 +254,7 @@ PLUGIN_LYRIONJS_OUTPUT_DESC
 	IT	Come riproducono i browser, salvo che un browser sia stato impostato diversamente nelle sue impostazioni. Automatica usa l'elemento multimediale su telefoni e tablet (continua a suonare a schermo bloccato) e Web Audio altrove.
 	NL	Hoe browsers afspelen, tenzij een browser in zijn eigen instellingen anders is ingesteld. Automatisch gebruikt het media-element op telefoons en tablets (blijft spelen met vergrendeld scherm) en elders Web Audio.
 	NO	Hvordan nettlesere spiller, med mindre en nettleser er stilt inn annerledes i sine egne innstillinger. Automatisk bruker medieelementet på telefoner og nettbrett (fortsetter å spille med låst skjerm) og Web Audio ellers.
+	NN	Korleis nettlesarar spelar, med mindre ein nettlesar er stilt inn annleis i innstillingane sine. Automatisk brukar medieelementet på telefonar og nettbrett (held fram med å spele med låst skjerm) og Web Audio elles.
 	PL	Sposób odtwarzania w przeglądarkach, chyba że w ustawieniach danej przeglądarki wybrano inaczej. „Automatycznie” oznacza element multimedialny na telefonach i tabletach (gra przy zablokowanym ekranie) i Web Audio w pozostałych przypadkach.
 	SV	Hur webbläsare spelar, om inte en webbläsare har ställts in på annat sätt i sina egna inställningar. Automatisk använder mediaelementet på telefoner och surfplattor (fortsätter spela med skärmen låst) och Web Audio i övrigt.
 
@@ -250,6 +270,7 @@ PLUGIN_LYRIONJS_OUTPUT_AUTO
 	IT	Automatica
 	NL	Automatisch
 	NO	Automatisk
+	NN	Automatisk
 	PL	Automatycznie
 	SV	Automatisk
 
@@ -265,6 +286,7 @@ PLUGIN_LYRIONJS_OUTPUT_WEBAUDIO
 	IT	Web Audio (latenza minima)
 	NL	Web Audio (laagste vertraging)
 	NO	Web Audio (lavest forsinkelse)
+	NN	Web Audio (lågast forseinking)
 	PL	Web Audio (najniższe opóźnienie)
 	SV	Web Audio (lägst latens)
 
@@ -280,6 +302,7 @@ PLUGIN_LYRIONJS_OUTPUT_MEDIA
 	IT	Elemento multimediale (suona a schermo bloccato)
 	NL	Media-element (speelt met vergrendeld scherm)
 	NO	Medieelement (spiller med låst skjerm)
+	NN	Medieelement (spelar med låst skjerm)
 	PL	Element multimedialny (gra przy zablokowanym ekranie)
 	SV	Mediaelement (spelar med skärmen låst)
 
@@ -295,6 +318,7 @@ PLUGIN_LYRIONJS_DIAG
 	IT	Diagnostica
 	NL	Diagnose
 	NO	Diagnostikk
+	NN	Diagnostikk
 	PL	Diagnostyka
 	SV	Diagnostik
 
@@ -310,6 +334,7 @@ PLUGIN_LYRIONJS_DIAG_DESC
 	IT	Consenti ai lettori del browser di scrivere la diagnostica di riproduzione nel log di LMS (utile quando qualcosa non viene riprodotto su un telefono o tablet).
 	NL	Browserspelers afspeeldiagnose naar het LMS-logboek laten schrijven (handig als iets niet afspeelt op een telefoon of tablet).
 	NO	La nettleserspillere skrive avspillingsdiagnostikk til LMS-loggen (nyttig når noe ikke spilles av på en telefon eller et nettbrett).
+	NN	La nettlesarspelarar skrive avspelingsdiagnostikk til LMS-loggen (nyttig når noko ikkje blir spelt av på ein telefon eller eit nettbrett).
 	PL	Pozwól odtwarzaczom w przeglądarce zapisywać diagnostykę odtwarzania w dzienniku LMS (przydatne, gdy coś nie gra na telefonie lub tablecie).
 	SV	Låt webbläsarspelare skriva uppspelningsdiagnostik till LMS-loggen (användbart när något inte spelas på en telefon eller surfplatta).
 
@@ -325,6 +350,7 @@ PLUGIN_LYRIONJS_PLAYERS
 	IT	Lettori LyrionJS
 	NL	LyrionJS-spelers
 	NO	LyrionJS-spillere
+	NN	LyrionJS-spelarar
 	PL	Odtwarzacze LyrionJS
 	SV	LyrionJS-spelare
 
@@ -340,6 +366,7 @@ PLUGIN_LYRIONJS_NO_PLAYERS
 	IT	Nessun browser si è ancora connesso.
 	NL	Er heeft nog geen browser verbinding gemaakt.
 	NO	Ingen nettleser har koblet til ennå.
+	NN	Ingen nettlesar har kopla til enno.
 	PL	Żadna przeglądarka jeszcze się nie połączyła.
 	SV	Ingen webbläsare har anslutit ännu.
 
@@ -355,6 +382,7 @@ PLUGIN_LYRIONJS_CONNECTED
 	IT	connesso
 	NL	verbonden
 	NO	tilkoblet
+	NN	tilkopla
 	PL	połączony
 	SV	ansluten
 
@@ -370,6 +398,7 @@ PLUGIN_LYRIONJS_DISCONNECTED
 	IT	non connesso
 	NL	niet verbonden
 	NO	ikke tilkoblet
+	NN	ikkje tilkopla
 	PL	niepołączony
 	SV	inte ansluten
 
@@ -385,5 +414,6 @@ PLUGIN_LYRIONJS_SESSIONS
 	IT	Connessioni dei lettori aperte
 	NL	Open spelerverbindingen
 	NO	Aktive spillertilkoblinger
+	NN	Aktive spelartilkoplingar
 	PL	Otwarte połączenia odtwarzaczy
 	SV	Aktiva spelaranslutningar
