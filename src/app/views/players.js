@@ -100,7 +100,7 @@
 
   // -- Alarms ------------------------------------------------------------------
   /** A weekday's short name in the page's language: 0 Sunday … 6 Saturday, as LMS counts. */
-  const dayName = (i) => new Intl.DateTimeFormat(lang, { weekday: 'short', timeZone: 'UTC' }).format(Date.UTC(2023, 0, 1 + i, 12));
+  const dayName = (i) => new Intl.DateTimeFormat(locale, { weekday: 'short', timeZone: 'UTC' }).format(Date.UTC(2023, 0, 1 + i, 12));
   VIEWS.alarms = () => {
     const list = h('div', { class: 'list' });
     const master = h('input', { type: 'checkbox', class: 'switch', 'aria-label': tr('Alarms enabled') });

@@ -26,9 +26,9 @@
           kv(tr('Why'), S.outputWhy ? tr(S.outputWhy) : ''),
           S.output && S.output.volumeLocked ? kv(tr('Volume'), tr('Set with this device\'s own buttons (the page can\'t set it here); LMS volume is held at 100 %')) : null,
           kv(tr('Formats'), tr('{formats} (LMS converts everything else to FLAC)', { formats: S.local.caps.map((c) => ({ flc: 'FLAC', pcm: 'PCM/WAV/AIFF', mp3: 'MP3' }[c] || c)).join(', ') })),
-          kv(tr('Highest sample rate'), (S.local.maxRateFound / 1000).toLocaleString(lang) + ' kHz'),
-          kv(tr('Output'), out ? tr('{rate} kHz, {state}, ~{latency} ms latency', { rate: (out.rate / 1000).toLocaleString(lang), state: stateWord(out.state), latency: out.latency }) : tr('Opens when music starts')),
-          kv(tr('Buffered'), tr('{seconds} s decoded ahead', { seconds: snap.queued.toLocaleString(lang, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) })),
+          kv(tr('Highest sample rate'), (S.local.maxRateFound / 1000).toLocaleString(locale) + ' kHz'),
+          kv(tr('Output'), out ? tr('{rate} kHz, {state}, ~{latency} ms latency', { rate: (out.rate / 1000).toLocaleString(locale), state: stateWord(out.state), latency: out.latency }) : tr('Opens when music starts')),
+          kv(tr('Buffered'), tr('{seconds} s decoded ahead', { seconds: snap.queued.toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) })),
           S.output && !S.output.volumeLocked ? h('label', { class: 'setting' }, h('span', { text: tr('Output level in this browser (on top of the LMS volume)') }), trim) : null,
           h('label', { class: 'setting' }, h('span', { text: tr('Audio output') }), mode)) : null));
 
@@ -54,13 +54,19 @@
       // Server.
       let info = S.serverInfo;
       try { info = S.serverInfo = await S.lms.rpc('', ['serverstatus', 0, 0]); } catch (e) { /* keep last */ }
+      // Dates as LMS writes them (Settings › Interface: its date and time formats).
+      if (!S.dateFormats) {
+        const [date, time] = await Promise.all(['shortdateFormat', 'timeFormat'].map((k) => S.lms.rpc('', ['pref', k, '?']).then((r) => r._p2 || null, () => null)));
+        if (date && time) S.dateFormats = { date, time };
+      }
+      const when = (secs) => { const d = new Date(secs * 1000); return S.dateFormats ? lmsDate(d, S.dateFormats.date + ' ' + S.dateFormats.time) : d.toLocaleString(locale); };
       sections.push(h('section', {}, h('h3', { text: tr('Server') }),
         h('div', { class: 'kv' },
           kv(tr('Server'), `${S.server.name} (${location.host})`),
           info ? kv(tr('Version'), 'Lyrion Music Server ' + info.version) : null,
           info ? kv(tr('Library'), [trn(info['info total albums'], '{n} album', '{n} albums'), trn(info['info total artists'], '{n} artist', '{n} artists'), trn(info['info total songs'], '{n} track', '{n} tracks')].join(', ')) : null,
           info && info.rescan ? kv(tr('Scan'), tr('Scanning: {step} {done}/{total}', { step: info.progressname || '', done: info.progressdone || '', total: info.progresstotal || '' })) : null,
-          info && info.lastscan ? kv(tr('Last scan'), new Date(+info.lastscan * 1000).toLocaleString(lang)) : null),
+          info && info.lastscan ? kv(tr('Last scan'), when(+info.lastscan)) : null),
         h('div', { class: 'row-btns' },
           h('button', { class: 'btn ghost', onclick: () => act(['rescan'], tr('Library scan started'), '') }, icon('refresh'), tr('Scan for new music')))));
 

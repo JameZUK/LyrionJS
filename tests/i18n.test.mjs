@@ -60,3 +60,20 @@ test('the page picks the translation, fills it in, and falls back to English', (
   assert.equal(L.fromLms('NO'), 'no');
   assert.equal(L.fromLms('ZH_CN'), 'en');   // not one of ours (yet)
 });
+
+test('dates as LMS\'s date and time settings write them, ISO included', () => {
+  const src = readFileSync(new URL('../src/app/i18n.js', import.meta.url), 'utf8');
+  const store = { get: (k, d) => d, set: () => {} };
+  const L = vm.runInNewContext(src + '; ({ lmsDate, regionOf })', { store, document: {}, I18N: {}, Intl });
+  const d = new Date(2026, 9, 6, 20, 4, 9);   // 6 October 2026, 20:04:09 local time
+  assert.equal(L.lmsDate(d, '%Y-%m-%d %H:%M:%S', 'en-GB'), '2026-10-06 20:04:09');
+  assert.equal(L.lmsDate(d, '%m/%d/%Y |%I:%M %p', 'en-US'), '10/06/2026 8:04 PM');
+  assert.equal(L.lmsDate(d, '%A, %B |%d, %Y', 'en-GB'), 'Tuesday, October 6, 2026');
+  assert.equal(L.lmsDate(d, '%a |%d. %b %Y', 'de'), 'Di 6. Okt 2026');
+  assert.equal(L.lmsDate(d, '%d.%m.%y %H:%M', 'de'), '06.10.26 20:04');
+  // The browser's region within the page's language, else the language alone.
+  assert.equal(L.regionOf('en', ['en-GB', 'en']), 'en-GB');
+  assert.equal(L.regionOf('de', ['en-GB', 'de-AT']), 'de-AT');
+  assert.equal(L.regionOf('fr', ['en-GB']), 'fr');
+  assert.equal(L.regionOf('no', ['nb-NO']), 'nb-NO');
+});
