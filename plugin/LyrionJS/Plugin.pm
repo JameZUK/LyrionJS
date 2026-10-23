@@ -190,7 +190,12 @@ sub _appItems {
 	my ($skinName, $skinUrl) = _skinLink($request->client);
 	my @items = (
 		{ text => $url, weblink => $url, parseURLs => 1 },
-		$skinUrl ? { text => "$skinName: $skinUrl", weblink => $skinUrl, parseURLs => 1 } : (),
+		# The skin's name on a line of its own: Material shows an item's text as HTML (the link
+		# parseURLs makes) only when the text starts with it.
+		$skinUrl ? (
+			{ text => $skinName, style => 'itemNoAction', action => 'none' },
+			{ text => $skinUrl, weblink => $skinUrl, parseURLs => 1 },
+		) : (),
 		{ text => cstring($request->client, 'PLUGIN_LYRIONJS_MENU_INFO'), style => 'itemNoAction', action => 'none' },
 	);
 	# The page asked for (controllers fetch in pages, even of two items).
@@ -216,7 +221,7 @@ sub _appFeed {
 	my ($skinName, $skinUrl) = _skinLink($client);
 	$callback->({ items => [
 		{ name => $url, type => 'text', weblink => $url },   # a link to open, not a feed to fetch
-		$skinUrl ? { name => "$skinName: $skinUrl", type => 'text', weblink => $skinUrl } : (),
+		$skinUrl ? ({ name => $skinName, type => 'text' }, { name => $skinUrl, type => 'text', weblink => $skinUrl }) : (),
 		{ name => cstring($client, 'PLUGIN_LYRIONJS_MENU_INFO'), type => 'text' },
 	] });
 }
