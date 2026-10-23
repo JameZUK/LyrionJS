@@ -121,6 +121,7 @@ h3.section { margin: 22px 0 8px; font-size: 16px; color: var(--fg2); text-transf
 .row-actions .btn .ic { width: 26px; height: 26px; flex: none; }
 .setting.stack { flex-direction: column; align-items: stretch; gap: 10px; }
 .setting.stack .swatches { justify-content: flex-start; }
+.setting.stack select { max-width: 100%; }
 .tap-items .btn[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
 .row .meta { flex: 1; min-width: 0; }
 .t1 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

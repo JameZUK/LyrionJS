@@ -121,7 +121,7 @@
       const chipsRow = h('div', { class: 'setting stack', hidden: tap.value !== 'menu' }, h('span', { text: tr('Actions to show') }), chips);
       tap.addEventListener('change', () => { store.set('tapAction', tap.value); chipsRow.hidden = tap.value !== 'menu'; });
       sections.push(h('section', {}, h('h3', { text: tr('Library') }),
-        h('label', { class: 'setting' }, h('span', { text: tr('Tapping a track (search, albums, playlists, folders)') }), tap), chipsRow));
+        h('label', { class: 'setting stack' }, h('span', { text: tr('Tapping a track (search, albums, playlists, folders)') }), tap), chipsRow));
       sections.push(h('section', {}, h('h3', { text: tr('About') }),
         h('div', { class: 'about' }, logo('about-logo'),
           h('div', {}, h('div', { class: 'about-name', text: `LyrionJS ${VERSION}` }),
