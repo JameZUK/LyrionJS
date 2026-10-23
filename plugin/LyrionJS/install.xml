@@ -3,7 +3,7 @@
 	<id>7d0f3b2e-5c1a-4f8e-9a64-2b6c1e9d4a17</id>
 	<name>PLUGIN_LYRIONJS</name>
 	<module>Plugins::LyrionJS::Plugin</module>
-	<version>0.2.29</version>
+	<version>0.2.30</version>
 	<description>PLUGIN_LYRIONJS_DESC</description>
 	<icon>plugins/LyrionJS/html/images/icon.png</icon>
 	<creator>JameZUK</creator>
