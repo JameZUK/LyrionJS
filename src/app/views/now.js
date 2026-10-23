@@ -97,7 +97,8 @@
     let q = qualityLabel(c);
     // The gain LMS applies to this track, by the player's ReplayGain mode (only when there is one).
     const rg = st.replay_gain != null && st.replay_gain !== '' && isFinite(+st.replay_gain) ? +st.replay_gain : null;
-    if (rg != null) q = (q ? q + ' · ' : '') + tr('ReplayGain {gain} dB', { gain: rg.toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1, signDisplay: 'exceptZero' }) });
+    // Two decimals and always a sign, as LMS and other clients show it ("+0.00"); never "−0.00".
+    if (rg != null) q = (q ? q + ' · ' : '') + tr('ReplayGain {gain} dB', { gain: (Math.round(rg * 100) / 100 || 0).toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2, signDisplay: 'always' }) });
     if (isLocal(S.target) && S.local) { const f = S.local.snapshot().format; if (f) q = (q ? q + '  →  ' : '') + tr('decoding {format}', { format: f }); }
     npEls.quality.textContent = q;
     const d = c.duration, t = elapsedNow();
