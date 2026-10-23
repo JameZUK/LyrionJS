@@ -22,7 +22,11 @@
         const st = await rpc(['status', '-', 1, STATUS_TAGS], target);
         if (target === S.target) {   // the player wasn't switched meanwhile
           S.status = st; S.statusAt = performance.now();
-          if (st.playlist_timestamp !== S.lastPlaylistTs) { S.lastPlaylistTs = st.playlist_timestamp; emitPlaylistChanged(); }
+          // LMS doesn't change playlist_timestamp when the current track changes (a jump, or the next
+          // track starting), so the current index is watched too: the queue marks the current track.
+          if (st.playlist_timestamp !== S.lastPlaylistTs || st.playlist_cur_index !== S.lastPlaylistCur) {
+            S.lastPlaylistTs = st.playlist_timestamp; S.lastPlaylistCur = st.playlist_cur_index; emitPlaylistChanged();
+          }
           updateNowPlaying();
         }
       }
@@ -82,7 +86,7 @@
   function setTarget(id, auto) {
     if (!auto) { S.chosen = id; store.set('target', id); }
     const changed = id !== S.target;
-    S.target = id; S.status = null; S.lastPlaylistTs = null;
+    S.target = id; S.status = null; S.lastPlaylistTs = null; S.lastPlaylistCur = null;
     renderPlayerButton(); updateNowPlaying(); pollSoon(10);
     loadPluginMenus();
     if (changed) playerChanged();
