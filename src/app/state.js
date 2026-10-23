@@ -8,9 +8,17 @@
     chosen: store.get('target', null),   // the player last picked by hand (S.target may stand in for it)
   };
 
+  // This browser's player's MAC, made once. The plugin keeps a copy in a cookie (config.json, in
+  // boot.js): Safari deletes a page's storage after 7 days without a visit but not a cookie the
+  // server set, so a browser stays the same player rather than coming back as a new one.
+  const MAC_RE = /^02:4c:4a(:[0-9a-f]{2}){3}$/;
   function macBytes() {
     let mac = store.get('mac', null);
-    if (!/^02:4c:4a(:[0-9a-f]{2}){3}$/.test(mac || '')) {
+    if (!MAC_RE.test(mac || '')) {
+      const m = /(?:^|;\s*)lj_mac=([^;]*)/.exec(document.cookie);
+      if (m && MAC_RE.test(m[1])) { mac = m[1]; store.set('mac', mac); }
+    }
+    if (!MAC_RE.test(mac || '')) {
       const r = crypto.getRandomValues(new Uint8Array(3));
       mac = ['02', '4c', '4a', ...[...r].map((b) => b.toString(16).padStart(2, '0'))].join(':');
       store.set('mac', mac);

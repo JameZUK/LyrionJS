@@ -48,7 +48,11 @@ Perl, inside LMS's event loop, using only LMS's own APIs:
   minutes. When it changes, the tab reloads itself, unless this browser's player isn't stopped or
   something is being typed. Then it shows a "reload" button and waits. Also `skins`, the web
   skins installed (LMS's own list, as its settings page shows it) and `skin`, the server's: see
-  the next item.
+  the next item. The page passes its MAC (`?mac=`) at start, and the plugin sends it back as a
+  cookie (`lj_mac`, on LyrionJS's path only, set again each time as browsers keep one 400 days
+  at most). If the browser deletes the page's storage, as Safari does after 7 days without a
+  visit (it leaves cookies a server set), the page takes its MAC from the cookie and stays the
+  same player, rather than coming back as a new one with a new set of LMS settings.
 - **An LMS skin over the page** (`src/app/skin.js`). With one of `config.json`'s `skins` chosen
   in *Settings › Skin*, the page shows that skin, as LMS serves it, in a frame over itself,
   pointed at this browser's player with `?player=`. Nothing of the skin is copied or changed. The

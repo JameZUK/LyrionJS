@@ -52,6 +52,12 @@
     if (!wanted()) return;
     const mac = macBytes();
     S.localId = mac.str;
+    // Ask once for this browser's storage to be kept, as it holds the player's MAC: lost, the
+    // browser comes back as a new player. Only on HTTPS and localhost; Firefox asks the person.
+    if (!store.get('persistAsked', false) && navigator.storage && navigator.storage.persist) {
+      store.set('persistAsked', true);
+      navigator.storage.persisted().then((p) => p || navigator.storage.persist()).catch(() => {});
+    }
     if (!S.output) S.output = await chooseOutput();
     const [maxRate, mp3] = await Promise.all([S.outputMode === 'media' ? Promise.resolve(192000) : LJ.detectMaxRate(), detectMp3()]);
     if (!wanted()) return;   // switched off (or started) while the checks ran

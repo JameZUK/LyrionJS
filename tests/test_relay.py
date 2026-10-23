@@ -287,6 +287,13 @@ class WithFakeLms(unittest.IsolatedAsyncioTestCase):
     async def test_config_json(self):
         resp = await self.http(b"GET /plugins/LyrionJS/config.json HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n")
         self.assertEqual(json.loads(resp.split(b"\r\n\r\n", 1)[1])["enabled"], 1)
+        self.assertNotIn(b"Set-Cookie", resp)
+
+    async def test_config_json_keeps_the_mac_in_a_cookie(self):
+        resp = await self.http(b"GET /plugins/LyrionJS/config.json?mac=02%3A4c%3A4a%3A0a%3A0b%3A0c HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n")
+        self.assertIn(b"Set-Cookie: lj_mac=02:4c:4a:0a:0b:0c; Max-Age=34560000; SameSite=Strict", resp)
+        resp = await self.http(b"GET /plugins/LyrionJS/config.json?mac=00:04:20:0a:0b:0c HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n")
+        self.assertNotIn(b"Set-Cookie", resp)
 
 
     async def test_resume_reports_what_arrived_and_policy_closes_end_the_session(self):

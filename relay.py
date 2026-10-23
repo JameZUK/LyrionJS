@@ -28,7 +28,7 @@ import socket
 import struct
 import sys
 import time
-from urllib.parse import urlsplit
+from urllib.parse import parse_qs, urlsplit
 
 LOG = logging.getLogger("lyrionjs-dev")
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -98,6 +98,7 @@ class Request:
     def __init__(self, method, target, headers, body):
         self.method, self.target, self.headers, self.body = method, target, headers, body
         self.path = urlsplit(target).path
+        self.query = {k: v[0] for k, v in parse_qs(urlsplit(target).query).items()}
 
     def header(self, name):
         return self.headers.get(name.lower(), "")
@@ -353,8 +354,11 @@ class Relay:
         if p == "/plugins/LyrionJS/config.json" and req.method in ("GET", "HEAD"):
             body = json.dumps({"enabled": int(self.players), "defaultOutput": "auto", "clientDiagnostics": 1,
                                "version": VERSION}).encode()
-            writer.write(response(200, "OK", [("Content-Type", "application/json"), ("Cache-Control", "no-store")],
-                                  body if req.method == "GET" else b"", length=len(body)))
+            headers = [("Content-Type", "application/json"), ("Cache-Control", "no-store")]
+            mac = req.query.get("mac", "").lower()
+            if re.fullmatch(r"02:4c:4a(?::[0-9a-f]{2}){3}", mac):   # kept for the page, as the plugin does
+                headers.append(("Set-Cookie", f"lj_mac={mac}; Max-Age=34560000; SameSite=Strict"))
+            writer.write(response(200, "OK", headers, body if req.method == "GET" else b"", length=len(body)))
             return True
         if p == "/plugins/LyrionJS/log" and req.method == "POST":
             if not self.same_origin(req):

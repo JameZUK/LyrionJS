@@ -105,7 +105,7 @@
     document.getElementById('serverName').textContent = S.server.name;
     document.body.classList.add('ready');
     S.localId = macBytes().str;
-    try { S.config = serverConfig = await (await fetch('/plugins/LyrionJS/config.json', { cache: 'no-store' })).json(); } catch (e) { S.config = serverConfig = {}; }
+    try { S.config = serverConfig = await (await fetch(`/plugins/LyrionJS/config.json?mac=${encodeURIComponent(S.localId)}`, { cache: 'no-store' })).json(); } catch (e) { S.config = serverConfig = {}; }
     notePage(S.config);
     if (S.config.enabled === 0) toast(tr('Browser players are switched off in LMS (Settings › Plugins › LyrionJS). This page controls your other players.'));
     else claimPlayerThenStart();

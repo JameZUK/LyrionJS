@@ -241,6 +241,14 @@ sub _config {
 	$response->code(200);
 	$response->content_type('application/json');
 	$response->header('Cache-Control' => 'no-store');
+	# The page's MAC (?mac=), kept in a cookie for the page to fall back on if the browser
+	# deletes its storage (Safari does after 7 days without a visit; not cookies a server sets).
+	# Browsers keep a cookie 400 days at most, so it's set again on each load. Only LyrionJS's
+	# own path gets it.
+	my %query = eval { $response->request->uri->query_form };
+	my $mac = lc($query{mac} // '');
+	$response->header('Set-Cookie' => "lj_mac=$mac; Max-Age=34560000; SameSite=Strict")
+		if $mac =~ /^02:4c:4a(?::[0-9a-f]{2}){3}\z/;
 	$response->header('Content-Length' => length $body);
 	Slim::Web::HTTP::addHTTPResponse($httpClient, $response, \$body);
 }
