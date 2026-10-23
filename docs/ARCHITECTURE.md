@@ -149,7 +149,11 @@ authentication of its own.
    Switching browser players off in Settings ends the sessions there are (**4403**) and
    refuses resumes as well as new sessions.
 8. A new session whose HELO has the same MAC as an existing session ends that one first, so
-   LMS never sees two connections for one player.
+   LMS never sees two connections for one player. The page avoids getting there: a browser's
+   tabs share one MAC, so only the first tab is the player and the others are remote controls,
+   one of which takes over when it closes. A Web Lock (`lyrionjs-player`) settles it on HTTPS
+   and localhost; on plain HTTP, which has no Web Locks, the tabs ask each other on a
+   `BroadcastChannel` of the same name (`src/app/local.js`).
 
 Limits: 32 sessions, 64 sockets, 64 KiB per client message.
 

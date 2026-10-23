@@ -82,6 +82,7 @@
         toast(what === 'replaced' ? tr('This player was taken over by another session; this page is now a remote control.')
           : tr('Browser players are switched off in LMS (Settings › Plugins › LyrionJS); this page is now a remote control.'));
         if (S.local === p) stopLocalPlayer();
+        if (what === 'replaced') playerTaken();
         return;
       }
       if (what === 'state' || what === 'track' || what === 'connected') { pollSoon(150); refreshUnlock(); }
@@ -154,19 +155,54 @@
   }
 
   /**
-   * Only one tab per browser may be the player: two would share a MAC and fight. The tab that
-   * gets the lock keeps it for its life (switching the player off and on again reuses it).
+   * Only one tab per browser may be the player: two would share a MAC, and the plugin would give
+   * the player to the newer one, cutting off what the first was playing. So the first tab keeps
+   * it for its life (switching the player off and on again reuses it); the others are remote
+   * controls, and one of them takes over when it closes. The browser's lock does this where it
+   * has one (HTTPS and localhost); elsewhere the tabs ask each other on a channel.
    */
+  const ASK_MS = 400;   // for the player tab to answer a new one
+  let claim = null;     // null, 'asking' (the other tabs), 'waiting' (a remote control) or 'lock'
+  let chan = null, asked = null, askTimer = 0;
+  function ownPlayer() { S.ownsPlayer = true; startLocalPlayer(); }
+  function beRemote() {
+    claim = claim === 'lock' ? 'lock' : 'waiting';
+    toast(tr('Another tab is this browser\'s player; this one is a remote control.'));
+  }
   function claimPlayerThenStart() {
     if (S.ownsPlayer) { startLocalPlayer(); return; }
+    if (claim === 'asking') return;
+    if (claim) { beRemote(); return; }
     if (navigator.locks && navigator.locks.request) {
+      claim = 'lock';
+      const hold = () => { ownPlayer(); return new Promise(() => {}); };   // for the life of the tab
       navigator.locks.request('lyrionjs-player', { ifAvailable: true }, (lock) => {
-        if (!lock) { S.ownsPlayer = false; S.localId = macBytes().str; toast(tr('Another tab is this browser\'s player; this one is a remote control.')); return null; }
-        S.ownsPlayer = true;
-        startLocalPlayer();
-        return new Promise(() => {}); // hold the lock for the life of the tab
+        if (lock) return hold();
+        beRemote();
+        navigator.locks.request('lyrionjs-player', hold);   // granted when the player tab closes
+        return null;
       });
-    } else { S.ownsPlayer = true; startLocalPlayer(); }
+    } else if (window.BroadcastChannel) {
+      if (!chan) {
+        chan = new BroadcastChannel('lyrionjs-player');
+        chan.onmessage = ({ data: m }) => {
+          if (!m || typeof m !== 'object') return;
+          // Two tabs asking at once: the one that asked first goes ahead.
+          const first = asked && claim === 'asking' && (asked.at < m.at || (asked.at === m.at && asked.id < m.id));
+          if (m.t === 'who' && (S.ownsPlayer || first)) chan.postMessage({ t: 'mine' });
+          else if (m.t === 'mine' && claim === 'asking') { clearTimeout(askTimer); beRemote(); }
+          else if (m.t === 'gone' && claim === 'waiting') { claim = null; setTimeout(claimPlayerThenStart, Math.random() * 200); }
+        };
+        window.addEventListener('pagehide', () => { if (S.ownsPlayer) chan.postMessage({ t: 'gone' }); });
+      }
+      claim = 'asking'; asked = { t: 'who', at: Date.now(), id: Math.random() };
+      chan.postMessage(asked);
+      askTimer = setTimeout(() => { claim = null; ownPlayer(); }, ASK_MS);
+    } else ownPlayer();
+  }
+  /** The plugin gave this browser's player to another tab: this one waits for it, as a remote control. */
+  function playerTaken() {
+    if (S.ownsPlayer && claim !== 'lock') { S.ownsPlayer = false; claim = 'waiting'; }
   }
 
   // Back from the back/forward cache: the player stopped when the page was hidden; start afresh.
