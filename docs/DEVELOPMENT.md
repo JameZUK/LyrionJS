@@ -36,11 +36,12 @@ Never run the live tests against a household server: they create and remove test
 The page's text is English in the source, wrapped in `tr()` (see `src/app/i18n.js`); each language
 is `src/i18n/<code>.json`, the English text mapped to its translation.
 
-The twelve translations (cs, da, de, es, fi, fr, hu, it, nl, no, pl, sv), and the plugin's LMS
+The translations (cs, da, de, es, fi, fr, hu, it, nb, nl, nn, pl, sv), and the plugin's LMS
 strings in `plugin/LyrionJS/strings.txt`, were made with AI (Claude) from a brief: LMS's own
 translations for the shared terms (queue, favourites, shuffle, crossfade…), the queue kept apart
 from saved playlists, placeholders untouched, the jokes rewritten rather than translated word for
-word. No native speaker has checked them yet. Corrections from speakers win: take them as they
+word. Bokmål (nb) has been reviewed by a native speaker; the others haven't been checked by one
+yet. Corrections from speakers win: take them as they
 come, and keep the wording LMS uses where a fix would part from it without reason.
 
 To fix a translation, edit the value (never the English key) in `src/i18n/<code>.json`, keeping
