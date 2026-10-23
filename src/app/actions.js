@@ -47,7 +47,7 @@
     libMenu('track', it, [], (name, items) => {
       const by = Object.fromEntries(items.map((x) => [x.icon, x]));
       Object.assign(by, { play: { icon: 'play', run: play }, keep: { icon: 'play', run: () => playKeep('track', it.id) }, all: { icon: 'menu', run: () => libMenu('track', it, extra) } });
-      const btns = tapItems().filter(([k]) => show.includes(k) && by[k]).map(([k, label]) => h('button', { type: 'button', class: 'btn ghost sm',
+      const btns = tapItems().filter(([k]) => show.includes(k) && by[k]).map(([k, label]) => h('button', { type: 'button', class: 'btn ghost',
         onclick: async () => { closeTrackActions(); try { await by[k].run(); } catch (e) { fail(e); } } }, icon(by[k].icon), label));
       if (!btns.length) return libMenu('track', it, extra);
       r.setAttribute('aria-expanded', 'true');

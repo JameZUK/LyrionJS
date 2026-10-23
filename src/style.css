@@ -115,7 +115,10 @@ h3.section { margin: 22px 0 8px; font-size: 16px; color: var(--fg2); text-transf
 .row.dragging { opacity: .4; }
 .row.over { box-shadow: inset 0 2px 0 var(--accent); }
 .row[aria-expanded="true"] { background: var(--bg2); border-radius: 10px 10px 0 0; }
-.row-actions { display: flex; flex-wrap: wrap; gap: 8px; padding: 2px 8px 10px; background: var(--bg2); border-radius: 0 0 10px 10px; }
+.row-actions { display: flex; gap: 8px; padding: 2px 8px 10px; overflow-x: auto; scrollbar-width: thin; background: var(--bg2); border-radius: 0 0 10px 10px; }
+.row-actions .btn { flex: none; height: 80px; aspect-ratio: 2; flex-direction: column; justify-content: center; gap: 6px; padding: 6px; border-radius: 12px;
+  font-size: 12px; line-height: 1.15; text-align: center; overflow: hidden; }
+.row-actions .btn .ic { width: 26px; height: 26px; flex: none; }
 .setting.stack { flex-direction: column; align-items: stretch; gap: 10px; }
 .setting.stack .swatches { justify-content: flex-start; }
 .tap-items .btn[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
@@ -306,6 +309,8 @@ body:not(.ready) #nav, body:not(.ready) #bar, body:not(.ready) #playerBtn { visi
   .hero-art { width: 160px !important; height: 160px; }
   .hero-meta h2 { font-size: 24px; }
   .grid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px 10px; }
+  .row-actions { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); grid-auto-rows: 80px; overflow-x: visible; }
+  .row-actions .btn { height: auto; aspect-ratio: auto; }
   .bar-main { grid-template-columns: minmax(0, 1fr) auto; }
   .bar-right .bar-vol, .bar-right .bar-when { display: none; }
   .bar-ctrls .ib:not(.mid) { display: none; }

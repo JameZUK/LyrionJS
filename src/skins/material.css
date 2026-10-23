@@ -94,6 +94,7 @@
 :root[data-skin="material"] .row[role="button"]:hover { background: var(--hover); }
 :root[data-skin="material"] .row[aria-expanded="true"] { background: var(--hover); border-radius: 0; border-bottom: 0; }
 :root[data-skin="material"] .row-actions { background: var(--hover); border-radius: 0; padding: 2px 12px 8px 10px; border-bottom: 1px solid var(--line); }
+:root[data-skin="material"] .row-actions .btn { border-color: var(--line); border-radius: 8px; padding: 6px; }
 :root[data-skin="material"] .row.current { background: rgba(var(--accent-rgb), .25); }
 :root[data-skin="material"] .row.current .t1 { color: var(--fg); font-weight: 400; }
 :root[data-skin="material"] .t2 { color: var(--fg2); font-size: 13px; margin-top: -2px; }
