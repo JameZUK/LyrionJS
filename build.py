@@ -14,6 +14,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 import zipfile
 from urllib.parse import quote
 
@@ -120,6 +121,15 @@ def package(url, link=""):
     dist = os.path.join(HERE, "dist")
     os.makedirs(dist, exist_ok=True)
     zpath = os.path.join(dist, f"LyrionJS-{version}.zip")
+    # The files' date: the last commit's, so the same commit gives the same zip, and each release
+    # dates its files later than the one before. LMS keeps a file's date from the zip, and reuses
+    # its cached strings and plugin details until the dates change: one fixed date for every
+    # release left an update's new strings unread.
+    try:
+        stamp = int(subprocess.run(["git", "log", "-1", "--format=%ct"], cwd=HERE, capture_output=True, text=True, check=True).stdout)
+    except (OSError, ValueError, subprocess.CalledProcessError):
+        stamp = int(time.time())   # not a git checkout
+    date = time.gmtime(stamp)[:6]
     with zipfile.ZipFile(zpath, "w", zipfile.ZIP_DEFLATED) as z:
         for root, dirs, files in sorted(os.walk(plugin)):
             dirs[:] = sorted(d for d in dirs if not d.startswith("."))
@@ -127,11 +137,11 @@ def package(url, link=""):
                 if name.startswith(".") or name.endswith(("~", ".swp", ".bak", ".orig")):
                     continue   # editor and system leftovers
                 full = os.path.join(root, name)
-                info = zipfile.ZipInfo(os.path.relpath(full, plugin), date_time=(2026, 1, 1, 0, 0, 0))
+                info = zipfile.ZipInfo(os.path.relpath(full, plugin), date_time=date)
                 info.compress_type = zipfile.ZIP_DEFLATED
                 info.external_attr = 0o644 << 16   # readable by the LMS user, whoever unpacks it
                 with open(full, "rb") as f:
-                    z.writestr(info, f.read())   # fixed timestamps: the same files give the same zip
+                    z.writestr(info, f.read())
     with open(zpath, "rb") as f:
         sha = hashlib.sha1(f.read()).hexdigest()
     zurl = url.rstrip("/") + "/" + os.path.basename(zpath)

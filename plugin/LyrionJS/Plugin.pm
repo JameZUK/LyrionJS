@@ -179,7 +179,9 @@ sub _skinLink {
 	my %skins = Slim::Web::HTTP::skins(1);
 	my $want = lc($serverPrefs->get('skin') || '');
 	my ($dir) = grep { lc $_ eq $want && /^[\w.-]+\z/ } keys %skins or return;
-	return (cstring($client, 'PLUGIN_LYRIONJS_MENU_SKIN', $skins{$dir}), pageUrl() . '?skin=lms:' . $dir);
+	# The skin's name alone if LMS hasn't read this string yet (its strings cache predates it).
+	my $label = Slim::Utils::Strings::stringExists('PLUGIN_LYRIONJS_MENU_SKIN') ? cstring($client, 'PLUGIN_LYRIONJS_MENU_SKIN', $skins{$dir}) : $skins{$dir};
+	return ($label, pageUrl() . '?skin=lms:' . $dir);
 }
 
 sub _appItems {
