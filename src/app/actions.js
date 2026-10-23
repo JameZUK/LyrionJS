@@ -25,7 +25,7 @@
   // What tapping a track in a library list does (Settings, "Tapping a track"): play it now, replacing
   // the queue (the list's own play, which may queue the whole album); play it now, keeping the queue;
   // or open a row of the chosen actions under it. The ids are libMenu's icons, plus 'keep' and 'all'.
-  const TAP_DEFAULT = ['next_up', 'add', 'all'];
+  const TAP_DEFAULT = ['next_up', 'add'];
   const tapItems = () => [['play', tr('Play now')], ['keep', tr('Play now, keep the queue')], ['next_up', tr('Play next')], ['add', tr('Add to queue')],
     ['artist', tr('Go to artist')], ['album', tr('Go to album')], ['playlist', tr('Add to playlist…')], ['fav', tr('Add to favourites')],
     ['more', tr('More…')], ['all', tr('All options…')]];
