@@ -16,7 +16,8 @@ It adds a new way to play and changes nothing else about LMS.
 LyrionJS can show **any web skin installed on your LMS**, such as Material Skin, Default or
 Classic, with the browser still the player. You get the skin you already use, exactly as LMS
 serves it and at whatever version you've installed, and the music plays right there in the
-browser. Pick it once in *Settings › Skin*.
+browser. Pick it once in *Settings › Skin*, or with one tap in *My Apps › LyrionJS* (see
+[Skins](#skins)).
 
 ![Material Skin running inside LyrionJS, the browser as the player](docs/screenshots/material-skin.png)
 
@@ -84,15 +85,22 @@ In LyrionJS, *Settings › Skin* lists two kinds:
 
 ![Settings › Skin in LyrionJS, with Material Skin chosen](docs/screenshots/skin-setting.png)
 
+Or skip Settings: *My Apps › LyrionJS* has a second link, named after the skin your server uses
+(**Material Skin, with this browser as a player**, for example). Open it in any browser and that
+browser opens LyrionJS in that skin from then on. Each browser keeps its own choice, so you pick
+which browsers get the skin: one that never opens the link stays as it was.
+
 With an LMS skin chosen, LyrionJS opens straight into that skin. The browser stays the player,
 so it plays, keeps going with the screen locked and shows on the lock screen just as with
 LyrionJS's own look. Everything else is the skin's own: browsing, the queue, settings and other
 players.
 
-To reach LyrionJS's own pages (its settings, this player's details), use the skin's own way to
-LyrionJS: the LyrionJS tile on Material Skin's home screen, *My Apps › LyrionJS* or *Extras*.
-They open LyrionJS in the same tab instead of a new one. To return to the skin, use the button
-at the top named after it (**← Material Skin**, for example), the one on the About page, or Back.
+**Getting back to LyrionJS.** Inside the skin, click any LyrionJS link: the LyrionJS tile on
+Material Skin's home screen, the address in *My Apps › LyrionJS*, or *Extras › LyrionJS*. It
+takes you to LyrionJS's own pages (its settings, this player's details) in the same tab, rather
+than opening a second player. To return to the skin, use the button at the top named after it
+(**← Material Skin**, for example), the one on the About page, or Back. To stop using the skin
+in this browser, choose LyrionJS in *Settings › Skin*.
 
 A few things to know:
 
@@ -100,7 +108,8 @@ A few things to know:
 - Some plugins add folders that LMS lists as skins but aren't whole skins (for example Custom
   Browse's *Fishbone* or *iPeng*). They show LMS's plain *Light* pages instead.
 - In Material Skin, opening *My Apps › LyrionJS* from its menus shows a short page with
-  LyrionJS's address. Tap the address, or use the home screen tile, which goes straight there.
+  LyrionJS's address and the skin link. Tap one, or use the home screen tile, which goes
+  straight to LyrionJS.
 
 ## Settings
 

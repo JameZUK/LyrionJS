@@ -66,7 +66,10 @@ Perl, inside LMS's event loop, using only LMS's own APIs:
     returns to the skin; so do the top bar's `← <skin name>`, the button on the About page, and
     choosing an LMS skin in Settings;
   - the tab is named `<skin name> · LyrionJS`, not after the skin's page (Material's names the
-    player's MAC address).
+    player's MAC address);
+  - a link to the page with `?skin=` (a LyrionJS skin, or `lms:<folder>`) chooses that skin in
+    this browser, as *Settings › Skin* would, and is then dropped from the address. Followed
+    inside the skin, it switches the skin shown instead of opening LyrionJS's pages.
 - `GET /plugins/LyrionJS/svg?u=<address>` (`Svg.pm`): SVG pictures, such as radio logos. The page
   asks LMS's image proxy for every other picture from another host, always at a size: at full
   size, and always for SVG (which it can't resize), the proxy redirects the browser to the
@@ -86,7 +89,10 @@ Perl, inside LMS's event loop, using only LMS's own APIs:
     a `weblink` (a tap opens the browser on Squeezer) and `parseURLs` (a link that opens a new
     tab in Material). LMS's feed browser can't produce such an item: it either marks a text
     item inert (`itemNoAction` + `action none`, which Squeezer won't open) or gives it a browse
-    action (which controllers follow instead of the link);
+    action (which controllers follow instead of the link). A second item links to the server's
+    own skin with this browser as the player (`?skin=lms:<skin>`, below), when that skin is
+    installed. The page is the same for every controller, so it can't hold a choice for one
+    browser; the link sets it in the browser that opens it;
   - a link in the classic UI's plugin menu and Material Skin's *Extras* (`addPageLinks`, with
     the icon). Material opens Extras in a frame; the page then offers a tab of its own;
   - the button on the settings page.

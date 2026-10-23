@@ -172,11 +172,23 @@ sub initCLI {
 	Slim::Control::Request::addDispatch(['lyrionjs', 'items', '_index', '_quantity'], [0, 1, 1, \&_appItems]);
 }
 
+# The server's own web skin, with this browser as the player: LyrionJS showing that skin, as its
+# Settings › Skin would ([its name, the address], or nothing if the skin isn't installed).
+sub _skinLink {
+	my $client = shift;
+	my %skins = Slim::Web::HTTP::skins(1);
+	my $want = lc($serverPrefs->get('skin') || '');
+	my ($dir) = grep { lc $_ eq $want && /^[\w.-]+\z/ } keys %skins or return;
+	return (cstring($client, 'PLUGIN_LYRIONJS_MENU_SKIN', $skins{$dir}), pageUrl() . '?skin=lms:' . $dir);
+}
+
 sub _appItems {
 	my $request = shift;
 	my $url = pageUrl();
+	my ($skinName, $skinUrl) = _skinLink($request->client);
 	my @items = (
 		{ text => $url, weblink => $url, parseURLs => 1 },
+		$skinUrl ? { text => "$skinName: $skinUrl", weblink => $skinUrl, parseURLs => 1 } : (),
 		{ text => cstring($request->client, 'PLUGIN_LYRIONJS_MENU_INFO'), style => 'itemNoAction', action => 'none' },
 	);
 	# The page asked for (controllers fetch in pages, even of two items).
@@ -199,8 +211,10 @@ sub _appItems {
 sub _appFeed {
 	my ($client, $callback) = @_;
 	my $url = pageUrl();
+	my ($skinName, $skinUrl) = _skinLink($client);
 	$callback->({ items => [
 		{ name => $url, type => 'text', weblink => $url },   # a link to open, not a feed to fetch
+		$skinUrl ? { name => "$skinName: $skinUrl", type => 'text', weblink => $skinUrl } : (),
 		{ name => cstring($client, 'PLUGIN_LYRIONJS_MENU_INFO'), type => 'text' },
 	] });
 }

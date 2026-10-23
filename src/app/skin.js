@@ -8,6 +8,20 @@
   /** The LMS skin shown over the page ('lms:<its folder>' in Settings), if one is. */
   const lmsSkin = () => { const m = /^lms:([\w.-]+)$/.exec(store.get('skin', '')); return m ? m[1] : null; };
   const narrow = matchMedia('(max-width: 860px)');
+  /** A skin asked for in a link to LyrionJS (?skin=, as in the LyrionJS app's link to the server's skin). */
+  const skinParam = (u) => { try { const v = new URL(u, location.href).searchParams.get('skin'); return v && (SKINS[v] || /^lms:[\w.-]+$/.test(v)) ? v : null; } catch (e) { return null; } };
+  // Opened by such a link: this browser keeps that skin from now on, as if chosen in Settings.
+  const linkSkin = skinParam(location.href);
+  if (linkSkin) {
+    store.set('skin', linkSkin);
+    const u = new URL(location.href); u.searchParams.delete('skin');
+    history.replaceState(history.state, '', u.pathname + u.search + u.hash);
+  }
+  /** This browser's skin from now on (Settings › Skin, or a link): an LMS skin is shown now. */
+  function useSkin(v) {
+    store.set('skin', v); applySkin(); applyTheme();
+    if (lmsSkin()) { leaveOwn(); toast(tr('Showing {skin}', { skin: hostName() })); }
+  }
 
   function applySkin() {
     document.documentElement.dataset.skin = skin();
@@ -68,10 +82,10 @@
       for (const ev of ['touchend', 'click', 'keydown']) d.addEventListener(ev, unlock, true);
       d.addEventListener('click', (e) => {
         const a = e.target.closest && e.target.closest('a[href]');
-        if (a && isPageUrl(a.href)) { e.preventDefault(); e.stopPropagation(); enterOwn(); }
+        if (a && isPageUrl(a.href)) { e.preventDefault(); e.stopPropagation(); toPage(a.href); }
       }, true);
       const open = w.open;
-      w.open = function (u, ...rest) { if (u && isPageUrl(String(u))) { enterOwn(); return null; } return open.call(this, u, ...rest); };
+      w.open = function (u, ...rest) { if (u && isPageUrl(String(u))) { toPage(String(u)); return null; } return open.call(this, u, ...rest); };
     }
     for (let i = 0; i < w.frames.length; i++) hookFrame(w.frames[i]);
   }
@@ -83,6 +97,8 @@
     if (!hostOwn() && document.title !== t) document.title = t;
   }, 300);
 
+  /** A way to LyrionJS followed in the skin: to the skin it names, else LyrionJS's own pages. */
+  const toPage = (u) => (skinParam(u) ? useSkin(skinParam(u)) : enterOwn());
   /** From the LMS skin to LyrionJS's own pages, a step in the history (so Back returns). */
   function enterOwn() {
     if (!document.documentElement.dataset.host || hostOwn()) return;

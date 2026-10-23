@@ -66,6 +66,22 @@ PLUGIN_LYRIONJS_MENU_INFO
 	PL	Stuknij adres, aby otworzyć odtwarzacz, lub otwórz go w przeglądarce na dowolnym urządzeniu w twojej sieci.
 	SV	Tryck på adressen för att öppna spelaren, eller öppna den i en webbläsare på valfri enhet i ditt nätverk.
 
+PLUGIN_LYRIONJS_MENU_SKIN
+	EN	%s, with this browser as a player
+	CS	%s, s tímto prohlížečem jako přehrávačem
+	DA	%s, med denne browser som afspiller
+	DE	%s, mit diesem Browser als Player
+	ES	%s, con este navegador como reproductor
+	FI	%s, tämä selain soittimena
+	FR	%s, avec ce navigateur comme platine
+	HU	%s, ezzel a böngészővel lejátszóként
+	IT	%s, con questo browser come lettore
+	NL	%s, met deze browser als speler
+	NO	%s, med denne nettleseren som spiller
+	NN	%s, med denne nettlesaren som spelar
+	PL	%s, z tą przeglądarką jako odtwarzaczem
+	SV	%s, med den här webbläsaren som spelare
+
 PLUGIN_LYRIONJS_OPEN
 	EN	Web player
 	CS	Webový přehrávač
