@@ -71,6 +71,7 @@
       this.mac = opts.mac; this.uuid = opts.uuid; this.name = opts.name;
       this.openControl = opts.openControl; this.openStream = opts.openStream;
       this.output = opts.output; this.now = opts.now; this.caps = opts.caps || []; this.maxRate = opts.maxRate || 96000;
+      this.firmware = String(opts.firmware || 'lyrionjs').replace(/[,=]/g, '');   // shown as the player's firmware in LMS
       this.decoders = opts.decoders || {}; this.decodeAhead = opts.decodeAhead || DECODE_AHEAD_S;
       this.pumpBudget = opts.pumpBudget || 12; this.noTimer = !!opts.noTimer; this.log = opts.log || (() => {});
       this.onStat = null; this.onStrm = null;
@@ -104,7 +105,7 @@
 
     capabilities() {
       return ['Model=squeezelite', 'ModelName=LyrionJS', 'AccuratePlayPoints=1', 'HasDigitalOut=0',
-        'HasPolarityInversion=0', 'Balance=0', 'Firmware=lyrionjs', 'MaxSampleRate=' + this.maxRate].concat(this.caps).join(',');
+        'HasPolarityInversion=0', 'Balance=0', 'Firmware=' + this.firmware, 'MaxSampleRate=' + this.maxRate].concat(this.caps).join(',');
     }
 
     // -- the control connection -------------------------------------------------

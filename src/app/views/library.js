@@ -35,15 +35,22 @@
       [['album', tr('By title')], ['artistalbum', tr('By artist')], ['yearalbum', tr('By year')], ['new', tr('Recently added')], ['random', tr('Random')]].map(([v, t]) => h('option', { value: v, text: t, selected: sort === v })));
     function build() {
       const all = loopFetch((s, n) => rpc(['albums', s, n, 'tags:aljyS', 'sort:' + sort, ...(p.filter || [])], ''), 'albums_loop');
+      // LMS shuffles each page it's asked for afresh: random albums come as one batch, never paged.
+      const once = async () => { const r = await all(0, RANDOM_BATCH); r.total = r.items.length; return r; };
       swap(holder, lazyList({
         grid: true, page: 120, render: albumCard,
         // "New music" shows the newest 300 albums, not the whole library newest-first.
-        fetch: p.sort === 'new' ? async (s, n) => { const r = await all(s, n); r.total = Math.min(r.total, 300); return r; } : all,
+        fetch: sort === 'random' ? once : p.sort === 'new' ? async (s, n) => { const r = await all(s, n); r.total = Math.min(r.total, 300); return r; } : all,
       }));
     }
     build();
-    return { title: p.title || tr('Albums'), el: holder, actions: pick ? [pick] : [] };
+    const again = btn('refresh', tr('Other random albums'), () => build());
+    if (sort !== 'random') again.hidden = true;
+    if (pick) pick.addEventListener('change', () => { again.hidden = sort !== 'random'; });
+    return { title: p.title || tr('Albums'), el: holder, actions: [again, ...(pick ? [pick] : [])] };
   };
+  const RANDOM_BATCH = 50;
+  VIEWS.randomalbums = () => VIEWS.albums({ sort: 'random', title: tr('Random albums') });
   VIEWS.newmusic = () => VIEWS.albums({ sort: 'new', title: tr('New music') });
 
   VIEWS.artist = (p) => {

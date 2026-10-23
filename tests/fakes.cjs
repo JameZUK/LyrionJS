@@ -41,7 +41,7 @@ function makePlayer(opts = {}) {
     mac: new Uint8Array([2, 0x4c, 0x4a, 0, 0, 9]), name: 'Test',
     openControl: () => { const t = new FakeTunnel('control', 0, 0); tunnels.push(t); return t; },
     openStream: ({ ip, port, win }) => { const t = new FakeTunnel(ip, port, win); tunnels.push(t); return t; },
-    output: out, now: () => clock, caps: ['flc', 'pcm'], maxRate: 96000, noTimer: true,
+    output: out, now: () => clock, caps: ['flc', 'pcm'], maxRate: 96000, noTimer: true, firmware: opts.firmware,
     decoders: opts.decoders || { f: () => new LJ.FlacDecoder(), p: (s) => new LJ.PcmDecoder(s) },
   });
   const ctl = () => tunnels[0];

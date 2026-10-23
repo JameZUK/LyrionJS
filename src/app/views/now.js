@@ -95,6 +95,9 @@
     npEls.album.textContent = c.album; npEls.album.disabled = !c.albumId; npEls.album.hidden = !c.album;
     npEls.station.textContent = c.stationTitle; npEls.station.hidden = !c.stationTitle;
     let q = qualityLabel(c);
+    // The gain LMS applies to this track, by the player's ReplayGain mode (only when there is one).
+    const rg = st.replay_gain != null && st.replay_gain !== '' && isFinite(+st.replay_gain) ? +st.replay_gain : null;
+    if (rg != null) q = (q ? q + ' · ' : '') + tr('ReplayGain {gain} dB', { gain: rg.toLocaleString(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1, signDisplay: 'exceptZero' }) });
     if (isLocal(S.target) && S.local) { const f = S.local.snapshot().format; if (f) q = (q ? q + '  →  ' : '') + tr('decoding {format}', { format: f }); }
     npEls.quality.textContent = q;
     const d = c.duration, t = elapsedNow();

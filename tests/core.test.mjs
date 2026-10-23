@@ -399,3 +399,10 @@ test('player: the output is told the bit depth of what it plays', () => {
   const s = t.tunnels[1]; s.onopen(); s.ondata(LJ.concat(HTTP_OK, fx('s24-l8.flac').subarray(0, 100000)));
   assert.equal(bits, 24);
 });
+
+test('player: HELO gives LMS the version as the firmware, without breaking the list', () => {
+  const caps = (o) => { const t = makePlayer(o); t.p.start(); t.ctl().onopen(); return LJ.latin1(t.ctl().sent[0].subarray(36)); };
+  assert.ok(caps({ firmware: '0.2.23' }).includes(',Firmware=0.2.23,'));
+  assert.ok(caps({}).includes(',Firmware=lyrionjs,'));
+  assert.ok(caps({ firmware: '1,2=3' }).includes(',Firmware=123,'));
+});

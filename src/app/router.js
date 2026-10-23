@@ -7,7 +7,7 @@
   const NAV = [
     ['home', N_('Home'), 'home'], ['now', N_('Now playing'), 'note'], ['queue', N_('Queue'), 'queue'], ['search', N_('Search'), 'search'], null,
     ['artists', N_('Artists'), 'artist'], ['albums', N_('Albums'), 'album'], ['genres', N_('Genres'), 'genre'], ['years', N_('Years'), 'year'],
-    ['newmusic', N_('New music'), 'star'], ['folders', N_('Music folder'), 'folder'], ['playlists', N_('Playlists'), 'playlist'], 'plugins',
+    ['newmusic', N_('New music'), 'star'], ['randomalbums', N_('Random albums'), 'shuffle'], ['folders', N_('Music folder'), 'folder'], ['playlists', N_('Playlists'), 'playlist'], 'plugins',
     ['favourites', N_('Favourites'), 'fav'], ['radio', N_('Radio'), 'radio'], ['apps', N_('Apps'), 'apps'], ['random', N_('Random mix'), 'random'], null,
     ['players', N_('Players'), 'speaker'], ['alarms', N_('Alarms'), 'alarm'], ['settings', N_('Settings'), 'settings'],
   ];

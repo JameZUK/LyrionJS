@@ -67,7 +67,7 @@
     const p = new LJ.SlimPlayer({
       mac: mac.bytes, uuid, name: store.get('name', defaultName()),
       openControl: () => LJ.controlSocket(WS_URL, LJ.browserEnv(), diag), openStream: (o) => LJ.openStream(o, LJ.browserEnv(), diag),
-      output: S.output, now: () => performance.now(), caps, maxRate, decoders,
+      output: S.output, now: () => performance.now(), caps, maxRate, decoders, firmware: VERSION,
       // Without AudioWorklet the output shares the main thread: decode in smaller slices.
       pumpBudget: window.AudioWorkletNode && window.isSecureContext ? 12 : 3,
       // A locked phone runs the page's code only now and then: keep more decoded ahead.
