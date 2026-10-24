@@ -4,14 +4,14 @@
 		<title lang="EN">LyrionJS</title>
 	</details>
 	<plugins>
-		<plugin name="LyrionJS" version="0.2.30" minTarget="8.0" maxTarget="*">
+		<plugin name="LyrionJS" version="0.2.31" minTarget="8.0" maxTarget="*">
 			<title lang="EN">LyrionJS</title>
 			<desc lang="EN">Play music in any web browser: the browser becomes a Slimproto player in LMS, with a full controller.</desc>
 			<creator>JameZUK</creator>
 			<category>player</category>
 			<link>https://github.com/JameZUK/LyrionJS</link>
-			<url>https://github.com/JameZUK/LyrionJS/releases/download/v0.2.30/LyrionJS-0.2.30.zip</url>
-			<sha>fb3d02aa6a5d4ec76deda953366af267ac2e829d</sha>
+			<url>https://github.com/JameZUK/LyrionJS/releases/download/v0.2.31/LyrionJS-0.2.31.zip</url>
+			<sha>499bf137e14feac848ae3e50c92a09eec06527b0</sha>
 		</plugin>
 	</plugins>
 </extensions>
