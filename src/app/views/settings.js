@@ -106,6 +106,20 @@
         h('label', { class: 'setting' }, h('span', { text: tr('Theme') }), theme),
         h('div', { class: 'setting' }, h('span', { text: tr('Highlight colour') }), swatches),
         h('label', { class: 'setting' }, h('span', { text: tr('Send playback diagnostics to the LMS server log (helps fix problems on phones and tablets)') }), dg)));
+      // Tapping a track in the library: play it, or show the chosen actions under it.
+      const tap = h('select', { class: 'select', 'aria-label': tr('Tapping a track') },
+        [['play', tr('Plays it now (replaces the queue)')], ['keep', tr('Plays it now (keeps the queue)')], ['menu', tr('Shows actions under it')]]
+          .map(([v, t]) => h('option', { value: v, text: t, selected: store.get('tapAction', 'play') === v })));
+      let chosen = store.get('tapItems', TAP_DEFAULT);
+      const chips = h('div', { class: 'swatches tap-items', role: 'group', 'aria-label': tr('Actions to show') }, tapItems().map(([k, label]) =>
+        h('button', { type: 'button', class: 'btn ghost sm', 'aria-pressed': String(chosen.includes(k)), onclick: (e) => {
+          chosen = chosen.includes(k) ? chosen.filter((x) => x !== k) : chosen.concat(k);
+          store.set('tapItems', chosen); e.currentTarget.setAttribute('aria-pressed', String(chosen.includes(k)));
+        } }, label)));
+      const chipsRow = h('div', { class: 'setting stack', hidden: tap.value !== 'menu' }, h('span', { text: tr('Actions to show') }), chips);
+      tap.addEventListener('change', () => { store.set('tapAction', tap.value); chipsRow.hidden = tap.value !== 'menu'; });
+      sections.push(h('section', {}, h('h3', { text: tr('Library') }),
+        h('label', { class: 'setting stack' }, h('span', { text: tr('Tapping a track (search, albums, playlists, folders)') }), tap), chipsRow));
       sections.push(h('section', {}, h('h3', { text: tr('About') }),
         h('div', { class: 'about' }, logo('about-logo'),
           h('div', {}, h('div', { class: 'about-name', text: `LyrionJS ${VERSION}` }),

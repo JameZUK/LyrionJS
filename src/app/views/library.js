@@ -87,7 +87,7 @@
           if (discs.size > 1 && t.disc !== lastDisc) { lastDisc = t.disc; rows.push(h('div', { class: 'disc', text: tr('Disc {n}', { n: t.disc || 1 }) })); }
           rows.push(row({
             num: t.tracknum || i + 1, title: t.title, sub: t.artist && t.artist !== p.artist ? t.artist : null, right: fmtTime(t.duration),
-            onclick: () => act(['playlistcontrol', 'cmd:load', 'album_id:' + p.id, 'play_index:' + i], tr('Playing')),
+            onclick: tapTrack({ ...t, art: S.lms.cover(t.coverid, 120) }, () => act(['playlistcontrol', 'cmd:load', 'album_id:' + p.id, 'play_index:' + i], tr('Playing'))),
             menu: () => libMenu('track', { ...t, art: S.lms.cover(t.coverid, 120) }),
           }));
         });
@@ -125,7 +125,7 @@
       fetch: loopFetch((s, n) => rpc(['musicfolder', s, n, 'tags:cdu', ...(p.id ? ['folder_id:' + p.id] : [])], ''), 'folder_loop'),
       render: (f) => {
         if (f.type === 'folder') return row({ art: null, artIcon: 'folder', title: f.filename, onclick: () => push('folders', { id: f.id, title: f.filename }), menu: () => libMenu('folder', { ...f, title: f.filename }) });
-        if (f.type === 'track') return row({ art: S.lms.cover(f.coverid || f.id, 96), title: f.filename, right: f.duration ? fmtTime(f.duration) : '', onclick: () => pc('load', 'track', f.id), menu: () => libMenu('track', { ...f, title: f.filename }) });
+        if (f.type === 'track') return row({ art: S.lms.cover(f.coverid || f.id, 96), title: f.filename, right: f.duration ? fmtTime(f.duration) : '', onclick: tapTrack({ ...f, title: f.filename }, () => pc('load', 'track', f.id)), menu: () => libMenu('track', { ...f, title: f.filename }) });
         if (f.type === 'playlist') return row({ art: null, artIcon: 'playlist', title: f.filename, onclick: () => pc('load', 'playlist', f.id), menu: () => libMenu('playlist', { ...f, title: f.filename }) });
         return row({ art: null, artIcon: 'note', title: f.filename, cls: 'dim' });
       },
