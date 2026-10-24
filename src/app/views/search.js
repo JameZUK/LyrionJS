@@ -19,7 +19,7 @@
         if (artists.length) out.push(h('h3', { class: 'section', text: tr('Artists ({count})', { count: ar.count }) }), h('div', { class: 'list' }, artists.map(artistRow)));
         if (albums.length) out.push(h('h3', { class: 'section', text: tr('Albums ({count})', { count: al.count }) }), h('div', { class: 'grid' }, albums.map(albumCard)));
         if (tracks.length) out.push(h('h3', { class: 'section', text: tr('Tracks ({count})', { count: ti.count }) }), h('div', { class: 'list' }, tracks.map((t) => trackRow(t, {
-          onclick: () => pc('load', 'track', t.id), menu: () => libMenu('track', { ...t, art: S.lms.cover(t.coverid, 120) }),
+          onclick: tapTrack({ ...t, art: S.lms.cover(t.coverid, 120) }, () => pc('load', 'track', t.id)), menu: () => libMenu('track', { ...t, art: S.lms.cover(t.coverid, 120) }),
         }))));
         if (lists.length) out.push(h('h3', { class: 'section', text: tr('Playlists') }), h('div', { class: 'list' }, lists.map((x) => row({ art: null, artIcon: 'playlist', title: x.playlist, onclick: () => push('playlist', { id: x.id, name: x.playlist }) }))));
         if (!out.length) out.push(h('div', { class: 'empty', text: tr('Nothing in the library matches “{query}”.', { query: q }) }));

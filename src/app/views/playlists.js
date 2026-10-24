@@ -29,15 +29,19 @@
     const build = () => swap(holder, lazyList({
       page: 500, empty: tr('This playlist is empty.'),
       fetch: async (s, n) => { const r = await tracks(s, n); count = r.total; return r; },
-      render: (t, i) => trackRow(t, {
-        onclick: () => act(['playlistcontrol', 'cmd:load', 'playlist_id:' + p.id, 'play_index:' + i], tr('Playing')),
-        menu: () => libMenu('track', { ...t, art: S.lms.cover(t.coverid, 120) }, [
+      render: (t, i) => {
+        const it = { ...t, art: S.lms.cover(t.coverid, 120) };
+        const edits = [
           { sep: true },
           i > 0 ? { label: tr('Move up'), icon: 'up', run: async () => { await act(['playlists', 'edit', 'cmd:move', 'playlist_id:' + p.id, 'index:' + i, 'toindex:' + (i - 1)], null, ''); build(); } } : null,
           i < count - 1 ? { label: tr('Move down'), icon: 'down', run: async () => { await act(['playlists', 'edit', 'cmd:move', 'playlist_id:' + p.id, 'index:' + i, 'toindex:' + (i + 1)], null, ''); build(); } } : null,
           { label: tr('Remove from playlist'), icon: 'delete', run: async () => { await act(['playlists', 'edit', 'cmd:delete', 'playlist_id:' + p.id, 'index:' + i], tr('Removed'), ''); build(); } },
-        ]),
-      }),
+        ];
+        return trackRow(t, {
+          onclick: tapTrack(it, () => act(['playlistcontrol', 'cmd:load', 'playlist_id:' + p.id, 'play_index:' + i], tr('Playing')), edits),
+          menu: () => libMenu('track', it, edits),
+        });
+      },
     }));
     build();
     return {
