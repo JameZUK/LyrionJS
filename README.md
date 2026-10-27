@@ -55,22 +55,24 @@ browser. Pick it once in *Settings › Skin*, or with one tap in *My Apps › Ly
 
 ## Install
 
-1. In LMS, go to *Settings › Plugins*. At the bottom, under *Additional Repositories*, add:
-
-   ```
-   https://raw.githubusercontent.com/JameZUK/LyrionJS/main/repo.xml
-   ```
-
-2. Click *Apply*. Then tick **LyrionJS** in the list, click *Apply* again, and restart LMS when asked.
-3. Open `http://<your-lms>:9000/plugins/LyrionJS/` in any browser. You can also open it from
+1. In LMS, go to *Settings › Plugins*. Tick **LyrionJS** in the list, click *Apply*, and restart
+   LMS when asked.
+2. Open `http://<your-lms>:9000/plugins/LyrionJS/` in any browser. You can also open it from
    *Apps › LyrionJS*, Material Skin's home screen, or *Settings › Plugins › LyrionJS*.
    Tap once so the browser allows sound.
-4. Optional: in LyrionJS, choose your usual skin in *Settings › Skin*.
+3. Optional: in LyrionJS, choose your usual skin in *Settings › Skin*.
 
    <sub>Whatever you do, don't open *Apps › LyrionJS* from inside LyrionJS.</sub>
 
-LMS offers updates through the same repository. To install by hand instead, unzip the release zip
-into a `LyrionJS` folder in LMS's plugin folder and restart LMS.
+LMS offers updates in the same place. If LyrionJS isn't in the list, add this under *Additional
+Repositories* at the bottom of *Settings › Plugins*, click *Apply*, and it appears:
+
+```
+https://raw.githubusercontent.com/JameZUK/LyrionJS/main/repo.xml
+```
+
+To install by hand instead, unzip the release zip into a `LyrionJS` folder in LMS's plugin folder
+and restart LMS.
 
 **Requirements:** LMS 8 or later and a current browser. iPhone and iPad need iOS 17.1 or later to
 keep playing with the screen locked.
