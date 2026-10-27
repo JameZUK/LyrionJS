@@ -11,9 +11,11 @@ use strict;
 use base qw(Slim::Plugin::OPMLBased);
 
 use File::Basename qw(dirname);
+use File::Find qw(find);
 use File::Spec::Functions qw(catfile);
+use File::Spec ();
 use JSON::XS::VersionOneAndTwo;
-use List::Util qw(min);
+use List::Util qw(max min);
 use Socket ();
 
 use Slim::Utils::Log;
@@ -44,6 +46,7 @@ $prefs->setValidate({ validator => sub { validPageUrl($_[1]) } }, 'pageUrl');
 
 use constant PAGE_URL => '/plugins/LyrionJS/';
 use constant ICON     => 'plugins/LyrionJS/html/images/icon.png';   # PNG: Squeezer can't show SVG
+use constant STALE_PLAYER_DAYS => 30;
 
 my $pageFile = catfile(dirname(__FILE__), 'HTML', 'lyrionjs.html');
 my ($pageBody, $pageMtime) = ('', 0);
@@ -138,6 +141,9 @@ sub _registerLinks {
 # stick). Material's plugin API keeps the hash given to it, so a new address is changed in it in
 # place (_registerLinks). Once every plugin has loaded, as Material may load after this one.
 sub postinitPlugin {
+	eval { _cleanupStalePlayers(); 1 }
+		or $log->warn("Can't clean stale LyrionJS player preferences: $@");
+
 	return unless Slim::Utils::PluginManager->isEnabled('Plugins::MaterialSkin::Plugin');
 	my $register = Plugins::MaterialSkin::Plugin->can('registerCustomAction') or return;
 	%materialActions = (pinned => { title => string('PLUGIN_LYRIONJS'), icon => 'music_note' });
@@ -286,6 +292,94 @@ sub _page {
 	$response->header('Content-Length' => length($body));
 
 	Slim::Web::HTTP::addHTTPResponse($httpClient, $response, \$body);
+}
+
+sub _cleanupStalePlayers {
+	my $prefsDir = scalar Slim::Utils::OSDetect::dirsFor('prefs');
+	return unless defined $prefsDir && -d $prefsDir;
+
+	my @clientPrefs = $serverPrefs->allClients;
+	my @staleIds = _stalePlayerIds(\@clientPrefs, time, $prefsDir, \&Slim::Player::Client::getClient);
+	return unless @staleIds;
+
+	my @activeNamespaces = @{ Slim::Utils::Prefs::namespaces() || [] };
+	my @namespaces = _prefsNamespaces($prefsDir, @activeNamespaces);
+	_removeClientPrefs(\@staleIds, \@namespaces);
+}
+
+sub _stalePlayerIds {
+	my ($clients, $now, $prefsDir, $getClient) = @_;
+	my $cutoff = $now - STALE_PLAYER_DAYS * 24 * 60 * 60;
+	my @staleIds;
+
+	for my $clientPrefs (@$clients) {
+		my $id = $clientPrefs->{clientid};
+		next unless Plugins::LyrionJS::Bridge::isLyrionJSPlayer($id);
+		next if $getClient->($id);
+
+		my $ts = _clientLastSeen($clientPrefs, $prefsDir);
+		push @staleIds, $id if $ts <= $cutoff;
+	}
+
+	return @staleIds;
+}
+
+sub _clientLastSeen {
+	my ($clientPrefs, $prefsDir) = @_;
+	my %eventTimestamps = map { $_ => 1 } qw(
+		_ts_currentSong _ts_maxBitrate _ts_model _ts_modelName _ts_playername
+		_ts_power _ts_repeat _ts_shuffle _ts_volume
+	);
+
+	my $ts = 0;
+	for my $key (keys %{ $clientPrefs->{prefs} }) {
+		next unless $eventTimestamps{$key};
+		$ts = max($ts, $clientPrefs->{prefs}{$key});
+	}
+
+	if (defined $prefsDir) {
+		my $playlistId = $clientPrefs->{clientid};
+		$playlistId =~ s/://g;
+		my @stat = stat catfile($prefsDir, "clientplaylist_$playlistId.m3u");
+		$ts = max($ts, $stat[9]) if @stat;
+	}
+
+	return $ts;
+}
+
+sub _prefsNamespaces {
+	my ($prefsDir, @activeNamespaces) = @_;
+	my %namespaces = map { $_ => 1 } @activeNamespaces;
+
+	find({
+		no_chdir => 1,
+		wanted   => sub {
+			my $path = $File::Find::name;
+			return unless -f $path && $path =~ /\.prefs\z/;
+
+			my $relative = File::Spec->abs2rel($path, $prefsDir);
+			my @parts = File::Spec->splitdir($relative);
+			$parts[-1] =~ s/\.prefs\z//;
+			return if grep { $_ eq '' || $_ eq '.' || $_ eq '..' } @parts;
+			$namespaces{join('.', @parts)} = 1;
+		},
+	}, $prefsDir);
+
+	return sort keys %namespaces;
+}
+
+sub _removeClientPrefs {
+	my ($ids, $namespaces, $getPrefs) = @_;
+	$getPrefs ||= \&preferences;
+	my $tag = $Slim::Utils::Prefs::Client::clientPreferenceTag;
+
+	for my $namespace (@$namespaces) {
+		my $prefs = $getPrefs->($namespace);
+		my @keys = map { "$tag:$_" } grep {
+			Slim::Utils::Prefs::Client->hasPrefs($prefs, $_)
+		} @$ids;
+		$prefs->remove(@keys) if @keys;
+	}
 }
 
 1;

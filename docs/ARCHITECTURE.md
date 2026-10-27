@@ -111,6 +111,11 @@ Perl, inside LMS's event loop, using only LMS's own APIs:
   `plugin.lyrionjs`: `enabled`, `proxyStreams`, `defaultOutput`, `clientDiagnostics`, `pageUrl`.
 - A subscription to `client new` / `client reconnect`: for players whose MAC starts with
   `02:4c:4a` only, set `mp3StreamingMethod = 1` (proxied) if it isn't already.
+- At startup, a best-effort sweep removes client preference entries for disconnected LyrionJS
+  players not seen for 30 days. Activity is the latest tracked client-pref timestamp or saved
+  playlist mtime; missing timestamps count as stale. It scans persisted prefs namespaces, but
+  leaves playlist files and global preferences alone, and runs whether or not Material Skin is
+  installed.
 
 LMS checks its password, if one is set, before a raw handler runs, so the plugin needs no
 authentication of its own.
