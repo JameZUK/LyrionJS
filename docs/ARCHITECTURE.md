@@ -108,9 +108,21 @@ Perl, inside LMS's event loop, using only LMS's own APIs:
   re-registered when it does. Links all use one address so that a browser stays one player
   (the page's identity is per origin).
 - A settings page (`Settings.pm`, `HTML/EN/plugins/LyrionJS/settings/basic.html`), prefs in
-  `plugin.lyrionjs`: `enabled`, `proxyStreams`, `defaultOutput`, `clientDiagnostics`, `pageUrl`.
+  `plugin.lyrionjs`: `enabled`, `proxyStreams`, `defaultOutput`, `clientDiagnostics`, `pageUrl`,
+  and `seen` (below).
 - A subscription to `client new` / `client reconnect`: for players whose MAC starts with
   `02:4c:4a` only, set `mp3StreamingMethod = 1` (proxied) if it isn't already.
+- Old players' settings (`Players.pm`). LMS keeps a `_client:<MAC>` entry in each prefs
+  namespace for every player it has seen, even after *Forget player*, and each new browser,
+  private window or cleared site is a new LyrionJS player. At startup, before any player
+  connects, the plugin removes those entries, in every namespace with a prefs file (a disabled
+  plugin's too), for LyrionJS players (`02:4c:4a` only) not seen for 30 days. LMS doesn't record
+  when a player was last connected, and a player in use may change no setting, so the plugin
+  keeps that itself in `seen` (MAC → time): on `client new` / `reconnect` / `disconnect`, at
+  shutdown, and daily for players still connected (LMS may be stopped without a shutdown, as in
+  Docker). A player not in `seen` yet starts counting then. A newer client-pref `_ts_` timestamp
+  or saved queue (`clientplaylist_*.m3u`) also counts as use. Saved queues and global prefs are
+  left alone.
 
 LMS checks its password, if one is set, before a raw handler runs, so the plugin needs no
 authentication of its own.
@@ -286,8 +298,8 @@ the plugin. Not for real use: no TLS, no authentication beyond what LMS has.
   the MP3 chunk decoder, the fMP4 muxer (output decoded by `ffmpeg` and compared bit for bit).
 - `python3 -m unittest discover -s tests`: the dev relay's socket protocol, against a fake LMS.
 - `tests/perl.sh`: the plugin's tests with LMS's own libraries, in the test container:
-  `bridge.t` (WebSocket framing, origin, HELO and Slimproto checks, the replay buffer) and
-  `sessions.t` (hello, resume, hold, timeouts, closing and back-pressure, with LMS's event
+  `bridge.t` (WebSocket framing, origin, HELO and Slimproto checks, the replay buffer),
+  `players.t` (which old players' settings go, and only theirs) and `sessions.t` (hello, resume, hold, timeouts, closing and back-pressure, with LMS's event
   loop stubbed).
 - `plugin/t/vectors.json`: protocol cases both the plugin's and the relay's tests run, so the
   two can't drift apart.

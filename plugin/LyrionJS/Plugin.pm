@@ -5,7 +5,8 @@ package Plugins::LyrionJS::Plugin;
 # Everything about the player (Slimproto, decoding, sync, output, UI) runs in the page. This
 # plugin only serves that page, pipes the page's WebSocket to LMS's own Slimproto port (see
 # Bridge.pm), passes SVG pictures on to it (Svg.pm), offers links to open the page, a settings
-# page, and asks LMS to proxy streams for LyrionJS players. It changes nothing else.
+# page, and asks LMS to proxy streams for LyrionJS players. When LMS starts, it removes the
+# settings LMS keeps for LyrionJS players that are gone (Players.pm). It changes nothing else.
 
 use strict;
 use base qw(Slim::Plugin::OPMLBased);
@@ -21,6 +22,7 @@ use Slim::Utils::Prefs;
 use Slim::Utils::Strings qw(string cstring);
 
 use Plugins::LyrionJS::Bridge;
+use Plugins::LyrionJS::Players;
 use Plugins::LyrionJS::Svg;
 
 my $log = Slim::Utils::Log->addLogCategory({
@@ -38,6 +40,7 @@ $prefs->init({
 	defaultOutput     => 'auto',  # auto | webaudio | media
 	clientDiagnostics => 0,       # pages may write diagnostics to the LMS log
 	pageUrl           => '',      # the player's address in links; empty: this server's DNS name
+	seen              => {},      # MAC => when that LyrionJS player was last connected (Players.pm)
 });
 $prefs->setValidate({ validator => sub { ($_[1] || '') =~ /^(?:auto|webaudio|media)$/ } }, 'defaultOutput');
 $prefs->setValidate({ validator => sub { validPageUrl($_[1]) } }, 'pageUrl');
@@ -73,10 +76,15 @@ sub initPlugin {
 	# ask LMS to proxy radio and podcast streams for them rather than send them direct. This is
 	# LMS's own per-player option, set only on LyrionJS players.
 	Slim::Control::Request::subscribe(\&_newClient, [['client'], ['new', 'reconnect']]);
+	Slim::Control::Request::subscribe(\&_seenClient, [['client'], ['new', 'reconnect', 'disconnect']]);
+	_seenConnected();
 }
 
 sub shutdownPlugin {
 	Slim::Control::Request::unsubscribe(\&_newClient);
+	Slim::Control::Request::unsubscribe(\&_seenClient);
+	Slim::Utils::Timers::killTimers(undef, \&_seenConnected);
+	_seen(map { $_->id } Slim::Player::Client::clients());   # the players still connected
 	Plugins::LyrionJS::Bridge->shutdown();
 }
 
@@ -138,6 +146,10 @@ sub _registerLinks {
 # stick). Material's plugin API keeps the hash given to it, so a new address is changed in it in
 # place (_registerLinks). Once every plugin has loaded, as Material may load after this one.
 sub postinitPlugin {
+	# Before any player connects. A failure must never stop the plugin.
+	eval { _removeStalePlayers(); 1 }
+		or $log->warn("Can't remove old LyrionJS players' settings: $@");
+
 	return unless Slim::Utils::PluginManager->isEnabled('Plugins::MaterialSkin::Plugin');
 	my $register = Plugins::MaterialSkin::Plugin->can('registerCustomAction') or return;
 	%materialActions = (pinned => { title => string('PLUGIN_LYRIONJS'), icon => 'music_note' });
@@ -286,6 +298,50 @@ sub _page {
 	$response->header('Content-Length' => length($body));
 
 	Slim::Web::HTTP::addHTTPResponse($httpClient, $response, \$body);
+}
+
+# When LyrionJS players were last connected, for Players.pm: LMS doesn't record it. On connecting
+# and disconnecting, at shutdown, and each day for those still connected, as LMS may be stopped
+# without a shutdown (a Docker container is, for one) and a page can stay open for weeks.
+sub _seenConnected {
+	_seen(map { $_->id } Slim::Player::Client::clients());
+	Slim::Utils::Timers::setTimer(undef, time + 24 * 60 * 60, \&_seenConnected);
+}
+
+sub _seenClient {
+	my $client = $_[0]->client || return;
+	_seen($client->id);
+}
+
+sub _seen {
+	my @ids = grep { Plugins::LyrionJS::Bridge::isLyrionJSPlayer($_) } @_ or return;
+	my $seen = $prefs->get('seen') || {};
+	$seen->{$_} = time for @ids;
+	$prefs->set('seen', $seen);
+}
+
+sub _removeStalePlayers {
+	my $prefsDir = Slim::Utils::Prefs::dir();
+	return unless defined $prefsDir && -d $prefsDir;
+
+	my $seen = $prefs->get('seen') || {};
+	my @clients = $serverPrefs->allClients;
+	my @ids = Plugins::LyrionJS::Players::staleIds(\@clients, $seen, time, $prefsDir,
+		\&Slim::Player::Client::getClient);
+
+	if (@ids) {
+		$log->info('Removing the settings of LyrionJS players not seen for '
+			. Plugins::LyrionJS::Players::STALE_DAYS . " days: @ids");
+		my @namespaces = Plugins::LyrionJS::Players::namespaces($prefsDir,
+			@{ Slim::Utils::Prefs::namespaces() || [] });
+		Plugins::LyrionJS::Players::removeClientPrefs(\@ids, \@namespaces, \&preferences,
+			$Slim::Utils::Prefs::Client::clientPreferenceTag);
+	}
+
+	# Keep times only for the players LMS still has settings for.
+	my %known = map { $_->{clientid} => 1 } $serverPrefs->allClients;
+	delete @$seen{ grep { !$known{$_} } keys %$seen };
+	$prefs->set('seen', $seen);
 }
 
 1;
