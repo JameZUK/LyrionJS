@@ -5,17 +5,16 @@ package Plugins::LyrionJS::Plugin;
 # Everything about the player (Slimproto, decoding, sync, output, UI) runs in the page. This
 # plugin only serves that page, pipes the page's WebSocket to LMS's own Slimproto port (see
 # Bridge.pm), passes SVG pictures on to it (Svg.pm), offers links to open the page, a settings
-# page, and asks LMS to proxy streams for LyrionJS players. It changes nothing else.
+# page, and asks LMS to proxy streams for LyrionJS players. When LMS starts, it removes the
+# settings LMS keeps for LyrionJS players that are gone (Players.pm). It changes nothing else.
 
 use strict;
 use base qw(Slim::Plugin::OPMLBased);
 
 use File::Basename qw(dirname);
-use File::Find qw(find);
 use File::Spec::Functions qw(catfile);
-use File::Spec ();
 use JSON::XS::VersionOneAndTwo;
-use List::Util qw(max min);
+use List::Util qw(min);
 use Socket ();
 
 use Slim::Utils::Log;
@@ -23,6 +22,7 @@ use Slim::Utils::Prefs;
 use Slim::Utils::Strings qw(string cstring);
 
 use Plugins::LyrionJS::Bridge;
+use Plugins::LyrionJS::Players;
 use Plugins::LyrionJS::Svg;
 
 my $log = Slim::Utils::Log->addLogCategory({
@@ -40,13 +40,13 @@ $prefs->init({
 	defaultOutput     => 'auto',  # auto | webaudio | media
 	clientDiagnostics => 0,       # pages may write diagnostics to the LMS log
 	pageUrl           => '',      # the player's address in links; empty: this server's DNS name
+	seen              => {},      # MAC => when that LyrionJS player was last connected (Players.pm)
 });
 $prefs->setValidate({ validator => sub { ($_[1] || '') =~ /^(?:auto|webaudio|media)$/ } }, 'defaultOutput');
 $prefs->setValidate({ validator => sub { validPageUrl($_[1]) } }, 'pageUrl');
 
 use constant PAGE_URL => '/plugins/LyrionJS/';
 use constant ICON     => 'plugins/LyrionJS/html/images/icon.png';   # PNG: Squeezer can't show SVG
-use constant STALE_PLAYER_DAYS => 30;
 
 my $pageFile = catfile(dirname(__FILE__), 'HTML', 'lyrionjs.html');
 my ($pageBody, $pageMtime) = ('', 0);
@@ -76,10 +76,15 @@ sub initPlugin {
 	# ask LMS to proxy radio and podcast streams for them rather than send them direct. This is
 	# LMS's own per-player option, set only on LyrionJS players.
 	Slim::Control::Request::subscribe(\&_newClient, [['client'], ['new', 'reconnect']]);
+	Slim::Control::Request::subscribe(\&_seenClient, [['client'], ['new', 'reconnect', 'disconnect']]);
+	_seenConnected();
 }
 
 sub shutdownPlugin {
 	Slim::Control::Request::unsubscribe(\&_newClient);
+	Slim::Control::Request::unsubscribe(\&_seenClient);
+	Slim::Utils::Timers::killTimers(undef, \&_seenConnected);
+	_seen(map { $_->id } Slim::Player::Client::clients());   # the players still connected
 	Plugins::LyrionJS::Bridge->shutdown();
 }
 
@@ -141,8 +146,9 @@ sub _registerLinks {
 # stick). Material's plugin API keeps the hash given to it, so a new address is changed in it in
 # place (_registerLinks). Once every plugin has loaded, as Material may load after this one.
 sub postinitPlugin {
-	eval { _cleanupStalePlayers(); 1 }
-		or $log->warn("Can't clean stale LyrionJS player preferences: $@");
+	# Before any player connects. A failure must never stop the plugin.
+	eval { _removeStalePlayers(); 1 }
+		or $log->warn("Can't remove old LyrionJS players' settings: $@");
 
 	return unless Slim::Utils::PluginManager->isEnabled('Plugins::MaterialSkin::Plugin');
 	my $register = Plugins::MaterialSkin::Plugin->can('registerCustomAction') or return;
@@ -294,92 +300,48 @@ sub _page {
 	Slim::Web::HTTP::addHTTPResponse($httpClient, $response, \$body);
 }
 
-sub _cleanupStalePlayers {
-	my $prefsDir = scalar Slim::Utils::OSDetect::dirsFor('prefs');
+# When LyrionJS players were last connected, for Players.pm: LMS doesn't record it. On connecting
+# and disconnecting, at shutdown, and each day for those still connected, as LMS may be stopped
+# without a shutdown (a Docker container is, for one) and a page can stay open for weeks.
+sub _seenConnected {
+	_seen(map { $_->id } Slim::Player::Client::clients());
+	Slim::Utils::Timers::setTimer(undef, time + 24 * 60 * 60, \&_seenConnected);
+}
+
+sub _seenClient {
+	my $client = $_[0]->client || return;
+	_seen($client->id);
+}
+
+sub _seen {
+	my @ids = grep { Plugins::LyrionJS::Bridge::isLyrionJSPlayer($_) } @_ or return;
+	my $seen = $prefs->get('seen') || {};
+	$seen->{$_} = time for @ids;
+	$prefs->set('seen', $seen);
+}
+
+sub _removeStalePlayers {
+	my $prefsDir = Slim::Utils::Prefs::dir();
 	return unless defined $prefsDir && -d $prefsDir;
 
-	my @clientPrefs = $serverPrefs->allClients;
-	my @staleIds = _stalePlayerIds(\@clientPrefs, time, $prefsDir, \&Slim::Player::Client::getClient);
-	return unless @staleIds;
+	my $seen = $prefs->get('seen') || {};
+	my @clients = $serverPrefs->allClients;
+	my @ids = Plugins::LyrionJS::Players::staleIds(\@clients, $seen, time, $prefsDir,
+		\&Slim::Player::Client::getClient);
 
-	my @activeNamespaces = @{ Slim::Utils::Prefs::namespaces() || [] };
-	my @namespaces = _prefsNamespaces($prefsDir, @activeNamespaces);
-	_removeClientPrefs(\@staleIds, \@namespaces);
-}
-
-sub _stalePlayerIds {
-	my ($clients, $now, $prefsDir, $getClient) = @_;
-	my $cutoff = $now - STALE_PLAYER_DAYS * 24 * 60 * 60;
-	my @staleIds;
-
-	for my $clientPrefs (@$clients) {
-		my $id = $clientPrefs->{clientid};
-		next unless Plugins::LyrionJS::Bridge::isLyrionJSPlayer($id);
-		next if $getClient->($id);
-
-		my $ts = _clientLastSeen($clientPrefs, $prefsDir);
-		push @staleIds, $id if $ts <= $cutoff;
+	if (@ids) {
+		$log->info('Removing the settings of LyrionJS players not seen for '
+			. Plugins::LyrionJS::Players::STALE_DAYS . " days: @ids");
+		my @namespaces = Plugins::LyrionJS::Players::namespaces($prefsDir,
+			@{ Slim::Utils::Prefs::namespaces() || [] });
+		Plugins::LyrionJS::Players::removeClientPrefs(\@ids, \@namespaces, \&preferences,
+			$Slim::Utils::Prefs::Client::clientPreferenceTag);
 	}
 
-	return @staleIds;
-}
-
-sub _clientLastSeen {
-	my ($clientPrefs, $prefsDir) = @_;
-	my %eventTimestamps = map { $_ => 1 } qw(
-		_ts_currentSong _ts_maxBitrate _ts_model _ts_modelName _ts_playername
-		_ts_power _ts_repeat _ts_shuffle _ts_volume
-	);
-
-	my $ts = 0;
-	for my $key (keys %{ $clientPrefs->{prefs} }) {
-		next unless $eventTimestamps{$key};
-		$ts = max($ts, $clientPrefs->{prefs}{$key});
-	}
-
-	if (defined $prefsDir) {
-		my $playlistId = $clientPrefs->{clientid};
-		$playlistId =~ s/://g;
-		my @stat = stat catfile($prefsDir, "clientplaylist_$playlistId.m3u");
-		$ts = max($ts, $stat[9]) if @stat;
-	}
-
-	return $ts;
-}
-
-sub _prefsNamespaces {
-	my ($prefsDir, @activeNamespaces) = @_;
-	my %namespaces = map { $_ => 1 } @activeNamespaces;
-
-	find({
-		no_chdir => 1,
-		wanted   => sub {
-			my $path = $File::Find::name;
-			return unless -f $path && $path =~ /\.prefs\z/;
-
-			my $relative = File::Spec->abs2rel($path, $prefsDir);
-			my @parts = File::Spec->splitdir($relative);
-			$parts[-1] =~ s/\.prefs\z//;
-			return if grep { $_ eq '' || $_ eq '.' || $_ eq '..' } @parts;
-			$namespaces{join('.', @parts)} = 1;
-		},
-	}, $prefsDir);
-
-	return sort keys %namespaces;
-}
-
-sub _removeClientPrefs {
-	my ($ids, $namespaces, $getPrefs) = @_;
-	$getPrefs ||= \&preferences;
-	my $tag = $Slim::Utils::Prefs::Client::clientPreferenceTag;
-
-	for my $namespace (@$namespaces) {
-		my $prefs = $getPrefs->($namespace);
-		my @keys = map { "$tag:$_" } grep {
-			Slim::Utils::Prefs::Client->hasPrefs($prefs, $_)
-		} @$ids;
-		$prefs->remove(@keys) if @keys;
-	}
+	# Keep times only for the players LMS still has settings for.
+	my %known = map { $_->{clientid} => 1 } $serverPrefs->allClients;
+	delete @$seen{ grep { !$known{$_} } keys %$seen };
+	$prefs->set('seen', $seen);
 }
 
 1;

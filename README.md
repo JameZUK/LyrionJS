@@ -131,9 +131,9 @@ Each browser is one player and keeps its identity across reloads, restarts and u
 page's storage, with a copy in a cookie). Only a private window or clearing the site's data makes
 a new player. A closed page drops out of LMS's player list within seconds.
 
-LMS keeps the settings of every player it has ever seen, even after *Forget player*, and has no
-way for a plugin to remove them. LyrionJS doesn't edit LMS's settings, so an old player's
-settings (a few KB) stay, as they do for any other player.
+LMS keeps the settings of every player it has ever seen, even after *Forget player*. So that
+old browsers don't pile up, LyrionJS removes the settings of its own players that haven't
+connected for 30 days, when LMS starts. Other players' settings are left alone.
 
 ### Translations
 
