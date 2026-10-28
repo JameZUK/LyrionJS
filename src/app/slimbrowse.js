@@ -211,15 +211,30 @@
     if (isLyrionJSApp(p.cmd)) return VIEWS.about({ recursion: true });   // however it was reached
     const holder = h('div');
     const page = { title: p.title || '', el: holder, perPlayer: true };
-    const items = loopFetch((s, n) => rpc([p.cmd, 'items', s, n, 'want_url:1', ...(p.item ? ['item_id:' + p.item] : []), ...(p.search ? ['search:' + p.search] : [])]), 'loop_loop');
+    const where = [...(p.item ? ['item_id:' + p.item] : []), ...(p.search ? ['search:' + p.search] : [])];
+    const items = loopFetch((s, n) => rpc([p.cmd, 'items', s, n, 'want_url:1', ...where]), 'loop_loop');
+    const inert = (it) => it.type === 'text' || it.type === 'textarea' || (!+it.hasitems && !+it.isaudio && it.type !== 'search' && it.type !== 'link');
+    // LMS gives an item's web link (a plugin's "Donate" page, say) only in menu mode, so a page
+    // with text items asks again in that mode for theirs, matched by name.
+    const fetch = async (s, n) => {
+      const r = await items(s, n);
+      if (r.items.some(inert)) {
+        try {
+          const m = await rpc([p.cmd, 'items', s, n, 'menu:' + p.cmd, ...where]);
+          const links = new Map((m.item_loop || []).filter((x) => x.weblink).map((x) => [firstLine(x.text), x.weblink]));
+          for (const it of r.items) if (inert(it) && links.has(it.name || it.title || '')) it.weblink = links.get(it.name || it.title || '');
+        } catch (e) { /* links are extra */ }
+      }
+      return r;
+    };
     const build = () => swap(holder, lazyList({
       page: 200, empty: tr('Nothing here.'),
-      fetch: items,
+      fetch,
       render: (it) => {
         const name = it.name || it.title || '';
-        if (it.type === 'text' || it.type === 'textarea' || (!+it.hasitems && !+it.isaudio && it.type !== 'search' && it.type !== 'link')) {
-          return h('div', { class: 'xml-text', text: name });
-        }
+        const link = it.weblink && safeLink(it.weblink);
+        if (link) return row({ art: xmlArt(it), artIcon: 'info', title: name, sub: it.line2 || null, onclick: () => window.open(link, '_blank', 'noopener') });
+        if (inert(it)) return h('div', { class: 'xml-text', text: name });
         const isSearch = it.type === 'search';
         const go = async () => {
           if (isSearch) {
