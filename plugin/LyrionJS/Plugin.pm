@@ -40,7 +40,6 @@ $prefs->init({
 	defaultOutput     => 'auto',  # auto | webaudio | media
 	clientDiagnostics => 0,       # pages may write diagnostics to the LMS log
 	pageUrl           => '',      # the player's address in links; empty: this server's DNS name
-	seen              => {},      # MAC => when that LyrionJS player was last connected (Players.pm)
 });
 $prefs->setValidate({ validator => sub { ($_[1] || '') =~ /^(?:auto|webaudio|media)$/ } }, 'defaultOutput');
 $prefs->setValidate({ validator => sub { validPageUrl($_[1]) } }, 'pageUrl');
@@ -314,34 +313,36 @@ sub _seenClient {
 }
 
 sub _seen {
-	my @ids = grep { Plugins::LyrionJS::Bridge::isLyrionJSPlayer($_) } @_ or return;
-	my $seen = $prefs->get('seen') || {};
-	$seen->{$_} = time for @ids;
-	$prefs->set('seen', $seen);
+	my $now = time;
+	for my $id (grep { Plugins::LyrionJS::Bridge::isLyrionJSPlayer($_) } @_) {
+		Slim::Utils::Prefs::Client->new($prefs, $id)->set('lastSeen', $now);
+	}
 }
 
 sub _removeStalePlayers {
 	my $prefsDir = Slim::Utils::Prefs::dir();
 	return unless defined $prefsDir && -d $prefsDir;
 
-	my $seen = $prefs->get('seen') || {};
-	my @clients = $serverPrefs->allClients;
-	my @ids = Plugins::LyrionJS::Players::staleIds(\@clients, $seen, time, $prefsDir,
-		\&Slim::Player::Client::getClient);
-
-	if (@ids) {
-		$log->info('Removing the settings of LyrionJS players not seen for '
-			. Plugins::LyrionJS::Players::STALE_DAYS . " days: @ids");
-		my @namespaces = Plugins::LyrionJS::Players::namespaces($prefsDir,
-			@{ Slim::Utils::Prefs::namespaces() || [] });
-		Plugins::LyrionJS::Players::removeClientPrefs(\@ids, \@namespaces, \&preferences,
-			$Slim::Utils::Prefs::Client::clientPreferenceTag);
+	# 0.2.32 and 0.2.33 kept the times in one global preference.
+	if (my $old = $prefs->get('seen')) {
+		Slim::Utils::Prefs::Client->new($prefs, $_)->set('lastSeen', $old->{$_}) for keys %$old;
+		$prefs->remove('seen');
 	}
 
-	# Keep times only for the players LMS still has settings for.
-	my %known = map { $_->{clientid} => 1 } $serverPrefs->allClients;
-	delete @$seen{ grep { !$known{$_} } keys %$seen };
-	$prefs->set('seen', $seen);
+	my %lastSeen = map { $_->{clientid} => $_->{prefs}{lastSeen} } $prefs->allClients;
+	my %ids = map { $_->{clientid} => 1 } $serverPrefs->allClients;
+	$ids{$_} = 1 for keys %lastSeen;
+	_seen(grep { !$lastSeen{$_} } keys %ids);   # first seen now
+
+	my @ids = Plugins::LyrionJS::Players::staleIds([ sort keys %ids ], \%lastSeen, time,
+		\&Slim::Player::Client::getClient) or return;
+
+	$log->info('Removing the settings of LyrionJS players not seen for '
+		. Plugins::LyrionJS::Players::STALE_DAYS . " days: @ids");
+	my @namespaces = Plugins::LyrionJS::Players::namespaces($prefsDir,
+		@{ Slim::Utils::Prefs::namespaces() || [] });
+	Plugins::LyrionJS::Players::removeClientPrefs(\@ids, \@namespaces, \&preferences,
+		$Slim::Utils::Prefs::Client::clientPreferenceTag);
 }
 
 1;

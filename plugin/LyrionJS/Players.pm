@@ -6,9 +6,9 @@ package Plugins::LyrionJS::Players;
 # for good, even after "Forget player". Each new browser, private window or cleared site makes
 # a new LyrionJS player, so these pile up. When LMS starts, the plugin removes them for its own
 # players (MAC prefix 02:4c:4a only) that haven't been seen for STALE_DAYS. LMS doesn't record
-# when a player was last connected, so the plugin keeps that in its own preferences
-# ('seen', MAC => time); a player it has no time for yet starts counting from now. Saved
-# playlists and global preferences are left alone.
+# when a player was last connected, so the plugin keeps that as a client preference of its own
+# ('lastSeen' in plugin.lyrionjs), which goes with the rest; a player it has no time for yet
+# starts counting from now. Saved playlists and global preferences are left alone.
 #
 # Pure: the caller passes in LMS's state, so this is tested without LMS (plugin/t/players.t).
 
@@ -16,53 +16,21 @@ use strict;
 
 use File::Find qw(find);
 use File::Spec ();
-use File::Spec::Functions qw(catfile);
-use List::Util qw(max);
 
 use Plugins::LyrionJS::Bridge;
 
 use constant STALE_DAYS => 30;
 
-# Client preferences LMS changes as a player is used; each change stamps "_ts_<name>".
-my @USE_STAMPS = qw(
-	_ts_currentSong _ts_maxBitrate _ts_model _ts_modelName _ts_playername
-	_ts_power _ts_repeat _ts_shuffle _ts_volume
-);
-
-# The LyrionJS players whose settings can go: not connected now, and nothing about them (the
-# plugin's 'seen' time, their settings' timestamps, their saved queue) newer than STALE_DAYS.
-# $clients are server.prefs' client preferences ({clientid, prefs}), $seen the 'seen' hash; a
-# player missing from it is added with $now.
+# The LyrionJS players among $ids whose settings can go: not connected now, and last seen
+# ($lastSeen: MAC => time) STALE_DAYS ago or more. A player with no time isn't stale.
 sub staleIds {
-	my ($clients, $seen, $now, $prefsDir, $isConnected) = @_;
+	my ($ids, $lastSeen, $now, $isConnected) = @_;
 	my $cutoff = $now - STALE_DAYS * 24 * 60 * 60;
-	my @staleIds;
 
-	for my $clientPrefs (@$clients) {
-		my $id = $clientPrefs->{clientid};
-		next unless Plugins::LyrionJS::Bridge::isLyrionJSPlayer($id);
-		next if $isConnected->($id);
-
-		$seen->{$id} ||= $now;
-		my $ts = max($seen->{$id}, lastUsed($clientPrefs, $prefsDir));
-		push @staleIds, $id if $ts <= $cutoff;
-	}
-
-	return @staleIds;
-}
-
-sub lastUsed {
-	my ($clientPrefs, $prefsDir) = @_;
-
-	my $ts = max(0, grep { defined } @{ $clientPrefs->{prefs} }{@USE_STAMPS});
-
-	if (defined $prefsDir) {
-		(my $playlistId = $clientPrefs->{clientid}) =~ s/://g;
-		my @stat = stat catfile($prefsDir, "clientplaylist_$playlistId.m3u");
-		$ts = max($ts, $stat[9]) if @stat;
-	}
-
-	return $ts;
+	return grep {
+		Plugins::LyrionJS::Bridge::isLyrionJSPlayer($_) && !$isConnected->($_)
+			&& ($lastSeen->{$_} || $now) <= $cutoff
+	} @$ids;
 }
 
 # Every namespace with a preferences file in $prefsDir (plugin/foo.prefs is "plugin.foo", as

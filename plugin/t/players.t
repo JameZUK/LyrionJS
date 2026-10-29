@@ -20,43 +20,26 @@ sub Slim::Utils::Prefs::Client::hasPrefs { $_[1]->{prefs}{"_client:$_[2]"} ? 1 :
 
 my $prefsDir = tempdir(CLEANUP => 1);
 sub touch {
-	my ($path, $time) = @_;
+	my $path = shift;
 	open my $fh, '>', $path or die "open $path: $!";
 	close $fh;
-	utime($time, $time, $path) if $time;
 }
 
 # --- which players are stale -------------------------------------------------------------
 my $now    = 2_000_000_000;
 my $cutoff = $now - $P->can('STALE_DAYS')->() * 24 * 60 * 60;
-touch(catfile($prefsDir, 'clientplaylist_024c4a000005.m3u'), $cutoff + 1);
-
-my %connected = ('02:4c:4a:00:00:06' => 1);
-my @clients = (
-	{ clientid => '02:4c:4a:00:00:01', prefs => { _ts_currentSong => $cutoff - 1 } },
-	{ clientid => '02:4c:4a:00:00:02', prefs => { _ts_volume => $cutoff } },
-	{ clientid => '02:4c:4a:00:00:03', prefs => {} },
-	{ clientid => '02:4c:4a:00:00:04', prefs => { _ts_power => $cutoff + 1 } },
-	{ clientid => '02:4c:4a:00:00:05', prefs => { _ts_currentSong => $cutoff - 1 } },
-	{ clientid => '02:4c:4a:00:00:06', prefs => { _ts_currentSong => $cutoff - 1 } },
-	{ clientid => '02:4c:4a:00:00:07', prefs => { _ts_currentSong => $cutoff - 1 } },
-	{ clientid => '02:4c:4a:00:00:08', prefs => {} },
-	{ clientid => '00:04:20:23:2d:84', prefs => { _ts_currentSong => $cutoff - 1 } },
+my %connected = ('02:4c:4a:00:00:04' => 1);
+my %lastSeen = (
+	'02:4c:4a:00:00:01' => $cutoff - 1,
+	'02:4c:4a:00:00:02' => $cutoff,
+	'02:4c:4a:00:00:03' => $cutoff + 1,
+	'02:4c:4a:00:00:04' => $cutoff - 1,
+	'00:04:20:23:2d:84' => $cutoff - 1,
 );
-my %seen = (
-	'02:4c:4a:00:00:01' => $cutoff - 5,
-	'02:4c:4a:00:00:02' => $cutoff - 5,
-	'02:4c:4a:00:00:03' => $cutoff - 5,
-	'02:4c:4a:00:00:04' => $cutoff - 5,
-	'02:4c:4a:00:00:05' => $cutoff - 5,
-	'02:4c:4a:00:00:06' => $cutoff - 5,
-	'02:4c:4a:00:00:07' => $cutoff + 1,   # connected recently, though no setting changed
-);
-my @stale = Plugins::LyrionJS::Players::staleIds(\@clients, \%seen, $now, $prefsDir, sub { $connected{$_[0]} });
-is_deeply(\@stale, [ '02:4c:4a:00:00:01', '02:4c:4a:00:00:02', '02:4c:4a:00:00:03' ],
-	'stale: old, on the cutoff, and no settings timestamps; kept: recently used, saved queue, connected, recently seen, other players');
-is($seen{'02:4c:4a:00:00:08'}, $now, 'a player not seen before starts counting from now');
-ok(!exists $seen{'00:04:20:23:2d:84'}, 'other players aren\'t recorded');
+my @ids = (sort(keys %lastSeen), '02:4c:4a:00:00:05');
+is_deeply([ Plugins::LyrionJS::Players::staleIds(\@ids, \%lastSeen, $now, sub { $connected{$_[0]} }) ],
+	[ '02:4c:4a:00:00:01', '02:4c:4a:00:00:02' ],
+	'stale: seen before or on the cutoff; kept: seen since, connected, no time yet, other players');
 
 # --- namespaces ----------------------------------------------------------------------------
 make_path(catfile($prefsDir, 'plugin', 'disabled'));

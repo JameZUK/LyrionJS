@@ -109,7 +109,7 @@ Perl, inside LMS's event loop, using only LMS's own APIs:
   (the page's identity is per origin).
 - A settings page (`Settings.pm`, `HTML/EN/plugins/LyrionJS/settings/basic.html`), prefs in
   `plugin.lyrionjs`: `enabled`, `proxyStreams`, `defaultOutput`, `clientDiagnostics`, `pageUrl`,
-  and `seen` (below).
+  and, per player, `lastSeen` (below).
 - A subscription to `client new` / `client reconnect`: for players whose MAC starts with
   `02:4c:4a` only, set `mp3StreamingMethod = 1` (proxied) if it isn't already.
 - Old players' settings (`Players.pm`). LMS keeps a `_client:<MAC>` entry in each prefs
@@ -118,11 +118,10 @@ Perl, inside LMS's event loop, using only LMS's own APIs:
   connects, the plugin removes those entries, in every namespace with a prefs file (a disabled
   plugin's too), for LyrionJS players (`02:4c:4a` only) not seen for 30 days. LMS doesn't record
   when a player was last connected, and a player in use may change no setting, so the plugin
-  keeps that itself in `seen` (MAC → time): on `client new` / `reconnect` / `disconnect`, at
-  shutdown, and daily for players still connected (LMS may be stopped without a shutdown, as in
-  Docker). A player not in `seen` yet starts counting then. A newer client-pref `_ts_` timestamp
-  or saved queue (`clientplaylist_*.m3u`) also counts as use. Saved queues and global prefs are
-  left alone.
+  keeps that itself, as a client pref `lastSeen` in `plugin.lyrionjs` (removed with the rest):
+  on `client new` / `reconnect` / `disconnect`, at shutdown, and daily for players still
+  connected (LMS may be stopped without a shutdown, as in Docker). A player without one yet
+  starts counting then. Saved queues and global prefs are left alone.
 
 LMS checks its password, if one is set, before a raw handler runs, so the plugin needs no
 authentication of its own.
