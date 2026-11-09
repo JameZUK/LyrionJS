@@ -17,6 +17,7 @@ PLUGIN_LYRIONJS
 	NN	LyrionJS
 	PL	LyrionJS
 	SV	LyrionJS
+	ZH_CN	LyrionJS
 
 PLUGIN_LYRIONJS_DESC
 	EN	Play music in any web browser: the browser becomes a Slimproto player in LMS, with a full controller. Open it at /plugins/LyrionJS/ on this server.
@@ -33,6 +34,7 @@ PLUGIN_LYRIONJS_DESC
 	NN	Spel musikk i kva nettlesar som helst: nettlesaren blir ein Slimproto-spelar i LMS, med full kontroll. Opne han på /plugins/LyrionJS/ på denne tenaren.
 	PL	Odtwarzaj muzykę w dowolnej przeglądarce: przeglądarka staje się odtwarzaczem Slimproto w LMS, z pełnym kontrolerem. Otwórz LyrionJS pod adresem /plugins/LyrionJS/ na tym serwerze.
 	SV	Spela musik i valfri webbläsare: webbläsaren blir en Slimproto-spelare i LMS, med en fullständig kontroll. Öppna den på /plugins/LyrionJS/ på den här servern.
+	ZH_CN	在任意浏览器中播放音乐。浏览器会成为 LMS 的 Slimproto 播放器，也能控制其他播放器。请访问此服务器上的 /plugins/LyrionJS/。
 
 PLUGIN_LYRIONJS_LINK
 	EN	LyrionJS web player
@@ -49,6 +51,7 @@ PLUGIN_LYRIONJS_LINK
 	NN	LyrionJS nettspelar
 	PL	Odtwarzacz internetowy LyrionJS
 	SV	LyrionJS webbspelare
+	ZH_CN	LyrionJS 网页播放器
 
 PLUGIN_LYRIONJS_MENU_INFO
 	EN	Tap the address to open the player, or open it in a browser on any device on your network.
@@ -65,6 +68,7 @@ PLUGIN_LYRIONJS_MENU_INFO
 	NN	Trykk på adressa for å opne spelaren, eller opne ho i ein nettlesar på kva eining som helst i nettverket ditt.
 	PL	Stuknij adres, aby otworzyć odtwarzacz, lub otwórz go w przeglądarce na dowolnym urządzeniu w twojej sieci.
 	SV	Tryck på adressen för att öppna spelaren, eller öppna den i en webbläsare på valfri enhet i ditt nätverk.
+	ZH_CN	点击地址即可打开播放器，也可用同一网络下任意设备的浏览器访问该地址。
 
 PLUGIN_LYRIONJS_MENU_SKIN
 	EN	%s, with this browser as a player
@@ -81,6 +85,7 @@ PLUGIN_LYRIONJS_MENU_SKIN
 	NN	%s, med denne nettlesaren som spelar
 	PL	%s, z tą przeglądarką jako odtwarzaczem
 	SV	%s, med den här webbläsaren som spelare
+	ZH_CN	%s，（将此浏览器用作播放器）
 
 PLUGIN_LYRIONJS_OPEN
 	EN	Web player
@@ -97,6 +102,7 @@ PLUGIN_LYRIONJS_OPEN
 	NN	Nettspelar
 	PL	Odtwarzacz internetowy
 	SV	Webbspelare
+	ZH_CN	网页播放器
 
 PLUGIN_LYRIONJS_OPEN_DESC
 	EN	Open the player in a browser on any device on your network: that browser becomes a player in LMS. Bookmark the address, or add it to the home screen on a phone or tablet.
@@ -113,6 +119,7 @@ PLUGIN_LYRIONJS_OPEN_DESC
 	NN	Opne spelaren i ein nettlesar på kva eining som helst i nettverket ditt: den nettlesaren blir ein spelar i LMS. Lagre adressa som bokmerke, eller legg ho til på startskjermen på ein telefon eller eit nettbrett.
 	PL	Otwórz odtwarzacz w przeglądarce na dowolnym urządzeniu w twojej sieci: ta przeglądarka stanie się odtwarzaczem w LMS. Dodaj adres do zakładek albo do ekranu głównego telefonu lub tabletu.
 	SV	Öppna spelaren i en webbläsare på valfri enhet i ditt nätverk: den webbläsaren blir en spelare i LMS. Spara adressen som bokmärke, eller lägg till den på hemskärmen på en telefon eller surfplatta.
+	ZH_CN	在同一网络下任意设备的浏览器中打开播放器，该浏览器就会成为 LMS 的播放器。可将地址加入书签，或添加到手机和平板电脑的主屏幕。
 
 PLUGIN_LYRIONJS_OPEN_BUTTON
 	EN	Open LyrionJS
@@ -129,6 +136,7 @@ PLUGIN_LYRIONJS_OPEN_BUTTON
 	NN	Opne LyrionJS
 	PL	Otwórz LyrionJS
 	SV	Öppna LyrionJS
+	ZH_CN	打开 LyrionJS
 
 PLUGIN_LYRIONJS_URL
 	EN	Player address
@@ -145,6 +153,7 @@ PLUGIN_LYRIONJS_URL
 	NN	Adressa til spelaren
 	PL	Adres odtwarzacza
 	SV	Spelarens adress
+	ZH_CN	播放器地址
 
 PLUGIN_LYRIONJS_URL_DESC
 	EN	The address LMS's menus and links open the player at. Leave empty to use this server's name from DNS (or its IP address if it has none). Set it if browsers reach LMS under another name, such as a reverse proxy: the player is one LMS player per browser and address, so keep to one.
@@ -161,6 +170,7 @@ PLUGIN_LYRIONJS_URL_DESC
 	NN	Adressa som menyane og lenkjene i LMS opnar spelaren på. La feltet stå tomt for å bruke namnet til tenaren frå DNS (eller IP-adressa viss han ikkje har noko namn). Fyll ho inn viss nettlesarar når LMS under eit anna namn, til dømes via ein omvend proxy: spelaren er éin LMS-spelar per nettlesar og adresse, så hald deg til éi.
 	PL	Adres, pod którym menu i linki LMS otwierają odtwarzacz. Pozostaw puste, aby użyć nazwy tego serwera z DNS (lub jego adresu IP, jeśli nie ma nazwy). Ustaw go, jeśli przeglądarki łączą się z LMS pod inną nazwą, np. przez odwrotne proxy: na każdą przeglądarkę i adres przypada jeden odtwarzacz LMS, więc trzymaj się jednego adresu.
 	SV	Adressen som LMS menyer och länkar öppnar spelaren på. Lämna tomt för att använda serverns namn från DNS (eller dess IP-adress om den inte har något). Ange den om webbläsare når LMS under ett annat namn, till exempel via en omvänd proxy: spelaren är en LMS-spelare per webbläsare och adress, så håll dig till en.
+	ZH_CN	从 LMS 菜单或链接打开播放器时使用的地址。留空则使用此服务器的 DNS 名称（没有名称时使用 IP 地址）。如果浏览器通过其他域名访问 LMS（例如经由反向代理），请在这里填写对应的地址。同一浏览器通过不同地址访问时会被识别为不同的播放器，因此请固定使用同一地址。
 
 PLUGIN_LYRIONJS_URL_BAD
 	EN	The player address must be a plain http:// or https:// address, such as http://music.example.lan:9000. It was not changed.
@@ -177,6 +187,7 @@ PLUGIN_LYRIONJS_URL_BAD
 	NN	Adressa til spelaren må vere ei vanleg http://- eller https://-adresse, til dømes http://music.example.lan:9000. Ho vart ikkje endra.
 	PL	Adres odtwarzacza musi być zwykłym adresem http:// lub https://, np. http://music.example.lan:9000. Nie został zmieniony.
 	SV	Spelarens adress måste vara en vanlig http://- eller https://-adress, till exempel http://music.example.lan:9000. Den ändrades inte.
+	ZH_CN	播放器地址必须是有效的 http:// 或 https:// 地址，例如 http://music.example.lan:9000。原地址未更改。
 
 PLUGIN_LYRIONJS_ENABLED
 	EN	Browser players
@@ -193,6 +204,7 @@ PLUGIN_LYRIONJS_ENABLED
 	NN	Nettlesarspelarar
 	PL	Odtwarzacze w przeglądarce
 	SV	Webbläsarspelare
+	ZH_CN	浏览器播放器
 
 PLUGIN_LYRIONJS_ENABLED_DESC
 	EN	Allow browsers to connect as players. When off, the page still works as a controller for your other players.
@@ -209,6 +221,7 @@ PLUGIN_LYRIONJS_ENABLED_DESC
 	NN	La nettlesarar kople til som spelarar. Når dette er av, fungerer sida framleis som kontroll for dei andre spelarane dine.
 	PL	Pozwól przeglądarkom łączyć się jako odtwarzacze. Gdy ta opcja jest wyłączona, strona nadal działa jako kontroler twoich pozostałych odtwarzaczy.
 	SV	Tillåt webbläsare att ansluta som spelare. När detta är av fungerar sidan fortfarande som kontroll för dina andra spelare.
+	ZH_CN	允许浏览器作为播放器连接。关闭后，此页面仍可用来控制其他播放器。
 
 PLUGIN_LYRIONJS_PROXY
 	EN	Radio and podcast streams
@@ -225,6 +238,7 @@ PLUGIN_LYRIONJS_PROXY
 	NN	Radio- og podkaststraumar
 	PL	Strumienie radiowe i podcasty
 	SV	Radio- och poddströmmar
+	ZH_CN	电台和播客音频流
 
 PLUGIN_LYRIONJS_PROXY_DESC
 	EN	Fetch internet streams through LMS for LyrionJS players (recommended: a browser can't fetch most stations directly). Sets LMS's own "proxied" streaming option on LyrionJS players only, when they connect.
@@ -241,6 +255,7 @@ PLUGIN_LYRIONJS_PROXY_DESC
 	NN	Hent internettstraumar via LMS for LyrionJS-spelarar (tilrådd: ein nettlesar kan ikkje hente dei fleste stasjonane direkte). Slår på LMS sitt eige strøymealternativ «via proxy» berre for LyrionJS-spelarar, når dei koplar til.
 	PL	Pobieraj strumienie internetowe przez LMS dla odtwarzaczy LyrionJS (zalecane: przeglądarka nie może pobrać większości stacji bezpośrednio). Włącza własną opcję strumieniowania LMS „proxied” tylko w odtwarzaczach LyrionJS, gdy się łączą.
 	SV	Hämta internetströmmar via LMS för LyrionJS-spelare (rekommenderas: en webbläsare kan inte hämta de flesta stationer direkt). Aktiverar LMS eget strömningsalternativ ”via proxy” endast för LyrionJS-spelare, när de ansluter.
+	ZH_CN	让 LyrionJS 播放器通过 LMS 获取互联网音频流（推荐，因为浏览器无法直接访问大多数电台）。LyrionJS 播放器连接时，LMS 仅对这些播放器启用代理播放选项。
 
 PLUGIN_LYRIONJS_OUTPUT
 	EN	Audio output
@@ -257,6 +272,7 @@ PLUGIN_LYRIONJS_OUTPUT
 	NN	Lydutgang
 	PL	Wyjście audio
 	SV	Ljudutgång
+	ZH_CN	音频输出
 
 PLUGIN_LYRIONJS_OUTPUT_DESC
 	EN	How browsers play, unless a browser has been set otherwise in its own settings. Automatic uses the media element on phones and tablets (keeps playing with the screen locked) and Web Audio elsewhere.
@@ -273,6 +289,7 @@ PLUGIN_LYRIONJS_OUTPUT_DESC
 	NN	Korleis nettlesarar spelar, med mindre ein nettlesar er stilt inn annleis i innstillingane sine. Automatisk brukar medieelementet på telefonar og nettbrett (held fram med å spele med låst skjerm) og Web Audio elles.
 	PL	Sposób odtwarzania w przeglądarkach, chyba że w ustawieniach danej przeglądarki wybrano inaczej. „Automatycznie” oznacza element multimedialny na telefonach i tabletach (gra przy zablokowanym ekranie) i Web Audio w pozostałych przypadkach.
 	SV	Hur webbläsare spelar, om inte en webbläsare har ställts in på annat sätt i sina egna inställningar. Automatisk använder mediaelementet på telefoner och surfplattor (fortsätter spela med skärmen låst) och Web Audio i övrigt.
+	ZH_CN	设置浏览器的默认音频输出方式。每个浏览器可在自己的设置中更改。选择「自动」时，手机和平板电脑使用媒体元素（支持锁屏播放），其他设备使用 Web Audio。
 
 PLUGIN_LYRIONJS_OUTPUT_AUTO
 	EN	Automatic
@@ -289,6 +306,7 @@ PLUGIN_LYRIONJS_OUTPUT_AUTO
 	NN	Automatisk
 	PL	Automatycznie
 	SV	Automatisk
+	ZH_CN	自动
 
 PLUGIN_LYRIONJS_OUTPUT_WEBAUDIO
 	EN	Web Audio (lowest latency)
@@ -305,6 +323,7 @@ PLUGIN_LYRIONJS_OUTPUT_WEBAUDIO
 	NN	Web Audio (lågast forseinking)
 	PL	Web Audio (najniższe opóźnienie)
 	SV	Web Audio (lägst latens)
+	ZH_CN	Web Audio（延迟最低）
 
 PLUGIN_LYRIONJS_OUTPUT_MEDIA
 	EN	Media element (plays with the screen locked)
@@ -321,6 +340,7 @@ PLUGIN_LYRIONJS_OUTPUT_MEDIA
 	NN	Medieelement (spelar med låst skjerm)
 	PL	Element multimedialny (gra przy zablokowanym ekranie)
 	SV	Mediaelement (spelar med skärmen låst)
+	ZH_CN	媒体元素（支持锁屏播放）
 
 PLUGIN_LYRIONJS_DIAG
 	EN	Diagnostics
@@ -337,6 +357,7 @@ PLUGIN_LYRIONJS_DIAG
 	NN	Diagnostikk
 	PL	Diagnostyka
 	SV	Diagnostik
+	ZH_CN	诊断
 
 PLUGIN_LYRIONJS_DIAG_DESC
 	EN	Let browser players write playback diagnostics to the LMS log (useful when something doesn't play on a phone or tablet).
@@ -353,6 +374,7 @@ PLUGIN_LYRIONJS_DIAG_DESC
 	NN	La nettlesarspelarar skrive avspelingsdiagnostikk til LMS-loggen (nyttig når noko ikkje blir spelt av på ein telefon eller eit nettbrett).
 	PL	Pozwól odtwarzaczom w przeglądarce zapisywać diagnostykę odtwarzania w dzienniku LMS (przydatne, gdy coś nie gra na telefonie lub tablecie).
 	SV	Låt webbläsarspelare skriva uppspelningsdiagnostik till LMS-loggen (användbart när något inte spelas på en telefon eller surfplatta).
+	ZH_CN	允许浏览器播放器将播放诊断信息写入 LMS 日志（便于排查手机和平板电脑上的播放问题）。
 
 PLUGIN_LYRIONJS_PLAYERS
 	EN	LyrionJS players
@@ -369,6 +391,7 @@ PLUGIN_LYRIONJS_PLAYERS
 	NN	LyrionJS-spelarar
 	PL	Odtwarzacze LyrionJS
 	SV	LyrionJS-spelare
+	ZH_CN	LyrionJS 播放器
 
 PLUGIN_LYRIONJS_NO_PLAYERS
 	EN	No browser has connected yet.
@@ -385,6 +408,7 @@ PLUGIN_LYRIONJS_NO_PLAYERS
 	NN	Ingen nettlesar har kopla til enno.
 	PL	Żadna przeglądarka jeszcze się nie połączyła.
 	SV	Ingen webbläsare har anslutit ännu.
+	ZH_CN	尚无浏览器连接。
 
 PLUGIN_LYRIONJS_CONNECTED
 	EN	connected
@@ -401,6 +425,7 @@ PLUGIN_LYRIONJS_CONNECTED
 	NN	tilkopla
 	PL	połączony
 	SV	ansluten
+	ZH_CN	已连接
 
 PLUGIN_LYRIONJS_DISCONNECTED
 	EN	not connected
@@ -417,6 +442,7 @@ PLUGIN_LYRIONJS_DISCONNECTED
 	NN	ikkje tilkopla
 	PL	niepołączony
 	SV	inte ansluten
+	ZH_CN	未连接
 
 PLUGIN_LYRIONJS_SESSIONS
 	EN	Open player connections
@@ -433,3 +459,4 @@ PLUGIN_LYRIONJS_SESSIONS
 	NN	Aktive spelartilkoplingar
 	PL	Otwarte połączenia odtwarzaczy
 	SV	Aktiva spelaranslutningar
+	ZH_CN	当前播放器连接数
