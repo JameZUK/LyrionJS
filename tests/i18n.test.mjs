@@ -60,7 +60,29 @@ test('the page picks the translation, fills it in, and falls back to English', (
   assert.equal(L.fromLms('NO'), 'nb');   // NO, before LMS 9.2, is Norwegian (bokmål)
   assert.equal(L.fromLms('NB'), 'nb');
   assert.equal(L.fromLms('NN'), 'nn');
-  assert.equal(L.fromLms('ZH_CN'), 'en');   // not one of ours (yet)
+  assert.equal(L.fromLms('ZH_CN'), 'zh');
+  assert.equal(L.fromLms('JA'), 'en');   // not one of ours
+});
+
+test('Simplified Chinese can follow LMS or be chosen for this browser', async () => {
+  const src = readFileSync(new URL('../src/app/i18n.js', import.meta.url), 'utf8');
+  const stored = {};
+  const store = { get: (k, d) => (k in stored ? stored[k] : d), set: (k, v) => { stored[k] = v; } };
+  const document = { documentElement: { style: { setProperty: () => {} } }, querySelectorAll: () => [] };
+  const S = { lms: { rpc: async () => ({ _p2: 'ZH_CN' }) } };
+  const L = vm.runInNewContext(src + '; ({ tr, trn, applyLang, learnLmsLang })', { store, document, I18N: langs, Intl, S });
+
+  assert.equal(await L.learnLmsLang(), true);
+  assert.equal(document.documentElement.lang, 'zh');
+  assert.equal(L.tr('Language'), '语言');
+  assert.equal(L.trn(1, '{n} track', '{n} tracks'), '1 首曲目');
+  assert.equal(L.trn(3, '{n} track', '{n} tracks'), '3 首曲目');
+
+  stored.lmsLang = 'en';
+  stored.lang = 'zh';
+  L.applyLang();
+  assert.equal(document.documentElement.lang, 'zh');
+  assert.equal(L.tr('Play now'), '立即播放');
 });
 
 test('dates as LMS\'s date and time settings write them, ISO included', () => {

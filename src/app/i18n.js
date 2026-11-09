@@ -7,7 +7,7 @@
   const LANGS = {
     en: 'English', cs: 'Čeština', da: 'Dansk', de: 'Deutsch', es: 'Español', fr: 'Français', it: 'Italiano',
     hu: 'Magyar', nl: 'Nederlands', nb: 'Norsk (bokmål)', nn: 'Norsk (nynorsk)', pl: 'Polski', fi: 'Suomi',
-    sv: 'Svenska',
+    sv: 'Svenska', zh: '简体中文',
   };
   let lang = 'en', dict = null, pluralRules = null;
   /** For numbers and dates: the browser's own region in the language in use (en-GB, de-AT…), else the language. */
@@ -75,7 +75,7 @@
     }).replace(/\|/g, '');
   }
 
-  /** LMS's language setting (EN, EN_GB, DE, NB, NN, or NO before 9.2…) as one of ours. */
+  /** LMS's language setting (EN, EN_GB, DE, NB, NN, ZH_CN, or NO before 9.2…) as one of ours. */
   const fromLms = (code) => { const c = ourLang(String(code || '').slice(0, 2).toLowerCase()); return LANGS[c] ? c : 'en'; };
   const langChoice = () => { const c = ourLang(store.get('lang', 'auto')); return LANGS[c] ? c : 'auto'; };
   /** LMS's language, as last seen. */
